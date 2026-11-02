@@ -1,88 +1,153 @@
 ---
 name: go-port
 description: >-
-  Port C, C++, Python, Java, JavaScript, TypeScript, Rust, or older Go into idiomatic
-  Go while preserving observable behavior. Use for port, translate, convert, migrate,
-  rewrite, or modernize requests. Port tests first and prove the result with gofmt,
-  go vet, and go test.
+  Port code from C, C++, Python, Java, JavaScript, TypeScript, Rust, or older Go into
+  idiomatic modern Go that keeps the original behavior: error values instead of
+  exceptions and error codes, typed constants instead of magic strings, small interfaces
+  instead of class hierarchies, and ported tests that prove the match. Use for port,
+  translate, convert, migrate, rewrite, or modernize requests ("rewrite this in Go",
+  "what would this look like in Go"), even if the user doesn't say "port".
 ---
 
 # Go port
 
-Write the Go a Go developer would write for the same observable behavior. Do not
-transliterate the source language's structure.
+Write the Go a Go developer would have written to solve the same problem, with the same
+observable behavior. A line-by-line transliteration keeps every problem the original had
+and adds Go's verbosity on top. Port the behavior, not the structure.
 
-## 1. Record the behavior
+## 1. Understand the original first
 
-Read the implementation, its tests, and its callers. List every public operation, its
-inputs and outputs, failure behavior, ordering, ties, empty input, case, whitespace, and
-numeric limits. Keep an unclear or buggy behavior and flag it in `PORTING.md`.
+1. Read the code, its tests, and its callers, if you have them.
+2. List the observable behavior: every public function, its inputs and outputs, and every
+   way it can fail. Include the quiet parts, where ports go wrong: result order, how ties
+   break, empty input, whitespace and case handling, integer limits and overflow, and what
+   counts as an error versus a valid edge case.
+3. Note what is incidental, meaning things the original does only because of its
+   language: manual memory management, out-parameters, `NULL` returns, global state,
+   fixed buffers, a class that only groups functions, or `isinstance` checks. These don't
+   carry over.
+4. If the original has a bug or an ambiguity, keep its behavior, flag it in the porting
+   notes, and let the user decide. A port is not the place to fix things silently.
 
 ## 2. Port the tests first
 
-Translate each source test into a Go test before writing its implementation. Use the
-source test name in the Go test name. If no test exists, write a characterization test
-from the behavior list. Run the tests and keep them failing until the implementation is
-ported. Do not add stubs merely to make the build pass.
+Translate each original test into a Go test before porting the implementation. Keep one
+Go test or one table row per original test, with a name that maps back to it
+(`TestParse/empty_input` for `test_parse_empty_input`), so a reader can check coverage.
+If the original has no tests, write characterization tests from the behavior list.
+Run them and watch them fail before you write the implementation.
 
-## 3. Map the source into Go
+## 3. Design the Go API, then implement it
 
-Use `go-best-practices` for the resulting style.
+Decide the packages, types, and signatures from the behavior list, not from the
+original's shape. Follow the `go-best-practices` skill for style, and use what the target
+module's `go` line allows (iterators, `min`/`max`, `slices`, `maps`, `errors.AsType`).
 
-- C and C++ ownership becomes Go values and garbage-collected memory. Use `Close` only
-  for real resources.
-- `NULL` and `None` become `nil` or a comma-ok result.
-- Error codes, exceptions, and thrown values become `error` values.
-- Closed sets of strings become typed constants or a named type with a parser.
-- Records become structs. Ordered maps remain ordered with an explicit slice when order
-  is observable.
-- Pointer-plus-length data becomes a slice. Fixed buffers grow unless the limit itself
-  is observable behavior.
-- Rust `Result` and `Option` become `error` and `nil` or comma-ok results. Do not copy
-  lifetimes, ownership annotations, or `unsafe` into the port.
-- Java streams and utility classes become slices, `range`, and package functions.
-- Replace `io/ioutil`, `interface{}`, and old context imports when modernizing Go.
+### From C and C++
 
-## 4. Use jscpd as a map
+| In the original | In Go |
+|---|---|
+| `malloc`/`free`, `new`/`delete`, `create`/`destroy` pairs | Values and slices the garbage collector frees; `Close` only for OS resources |
+| `NULL` meaning "absent" | A comma-ok result, or a nil pointer or slice where nil is already meaningful |
+| Error codes, `-1`, `errno` | An `error`; one sentinel (`ErrX`) per code callers test, or an error type with fields |
+| Out-parameters (`int *err_line`) | Extra return values, or fields on the error type |
+| Flag bitmasks | An options struct with named `bool` fields, or a named integer type with `iota << n` constants |
+| `char *` plus length, `strcmp`, `strcasecmp` | `string` or `[]byte`, `==`, `strings.EqualFold` |
+| Pointer plus count | A slice |
+| Fixed-size buffers | Growing slices and `strings.Builder`; keep a limit only if it is behavior |
+| `#define` constants and macros | `const`, typed constants, and functions |
+| Global mutable state | A struct the caller creates and owns |
+| `strtol` and friends | `strconv.ParseInt` with an explicit bit size; map its `*NumError` to your error |
 
-The installed command is `jscpd` 5.4.2. Its similarity report does not prove behavior.
-Run the same paths, options, and model every time:
+Don't use `unsafe` or cgo unless the port must call C, and then keep it in one small
+package behind a safe API.
 
-```bash
-jscpd --compare source/ target/
-jscpd --compare source/ target/ -r json -o .jscpd-compare --silent
-```
+### From Python
 
-Console, console-full, JSON, and Markdown are the verified compare reporters. Do not
-claim an HTML compare report. Start with the source and then the target. Ignore vendored
-dependencies and build output. Port tests before code, then port functions whose
-callees already exist. A `high` pair only says two functions look alike. `go test` and
-direct comparison decide whether they behave alike.
+| In the original | In Go |
+|---|---|
+| An exception hierarchy | Sentinel errors or error types, matched with `errors.Is` and `errors.AsType` |
+| `None` | A comma-ok result, a nil pointer, or the zero value when it can't be confused with data |
+| Strings used as a closed set | A named string type with constants and a parse function |
+| Dicts or classes used as records | Structs with named fields |
+| Dict iteration order (insertion order) | A slice, or a map plus a slice of keys, when order is observable |
+| Duck typing, `isinstance` | A small interface, or a type switch |
+| Unbounded `int` | A sized integer chosen on purpose, with overflow checked where input is large, or `math/big` |
+| Generators and `yield` | `iter.Seq[T]` |
+| `sorted(..., key=...)` | `slices.SortStableFunc`; Python's sort is stable, `slices.SortFunc` is not |
+| `with` blocks | `defer` right after the acquisition succeeds |
 
-Do not use jscpd dead-code detection for Go. It does not support Go.
+### From Java, JavaScript, TypeScript, and Rust
 
-## 5. Keep the port proportionate
+- Java: classes that group static methods become package functions; streams become
+  `range` loops or `slices`/`maps` calls; checked exceptions become `error` returns;
+  `Optional` becomes comma-ok; inheritance becomes embedding or an interface.
+- JavaScript and TypeScript: `null` and `undefined` become comma-ok or the zero value;
+  thrown errors become `error` returns; promises become synchronous functions that take a
+  `context.Context`, with goroutines only where the original ran work concurrently;
+  numbers become a sized integer or `float64`, chosen on purpose; union types become an
+  interface with a type switch or a struct with a kind field.
+- Rust: `Result` becomes `(T, error)`; `Option` becomes comma-ok; traits become small
+  interfaces or generic constraints; enums with data become an interface with one type
+  per variant; `Drop` becomes `Close` plus `defer`. Lifetimes and ownership annotations
+  have no Go equivalent and disappear.
+- Older Go: replace `io/ioutil`, `interface{}`, `sort.Slice`, `x := x` loop copies,
+  `wg.Add(1)` with `defer wg.Done()`, `errors.As` targets, pointer helpers, and
+  `b.N` loops. Run `go fix ./...` first and review its diff.
 
-Match realistic and relevant edge-case inputs, not every exotic input. Use `strconv`,
-`strings`, `time`, and `unicode` instead of reimplementing the source runtime. Keep the
-source algorithm unless it has a demonstrated performance or correctness problem. Record
-every deliberate difference.
+## 4. Keep the port proportionate
+
+Match the original on the inputs it actually receives, and use Go's standard library for
+the rest.
+
+- **Don't reimplement the source runtime.** Use `strconv`, `strings`, `unicode`, and
+  `time`, not hand-written copies of Python's `strip`, C's `strtol`, or JavaScript's
+  `Number` parsing. Where Go differs only on exotic input (Unicode digits, non-ASCII
+  whitespace, huge integers), list the difference in the notes instead of coding around
+  it.
+- **Don't grow the API.** Port the public surface the original has, plus a `String`
+  method on enums and errors that implement `error`. Skip functional options, extra
+  interfaces, and generic helpers the callers don't need.
+- **Keep the algorithm** unless it has a real correctness or performance problem on
+  realistic input, and say so in the notes when you change it.
+- **Check the size.** Count non-test, non-comment lines. A port from C, C++, or Java
+  usually lands near the original's size. A port from Python or JavaScript usually lands
+  at one and a half to two and a half times the original, because error handling and
+  types are explicit in Go. Much more than that usually means one of the habits above.
+
+Differential testing against the original is worth doing, but a few dozen realistic and
+edge-case inputs answer the question. If the original is runnable, add a Go fuzz test
+for a parser and compare outputs on its corpus rather than millions of random inputs.
+
+## 5. Optional similarity map
+
+If `jscpd` is installed, `jscpd --compare source/ target/` pairs functions in the
+original with similar functions in the port, which helps you find code you haven't
+ported yet. Run it with the same paths and options each time, source first. A similar
+pair does not prove the two behave alike; the ported tests decide that.
 
 ## 6. Verify
 
-Run:
+Run these, and fix everything before reporting:
 
 ```bash
 gofmt -l .
-go test ./...
 go vet ./...
+go test ./...
+go test -race ./...        # when the port has goroutines
+golangci-lint run          # when the module has a config
 ```
 
-Run `golangci-lint run` when configuration exists, and `go test -race ./...` when the
-port adds goroutines. Compare the port and source on the same inputs whenever both can
-run. Every ported test must pass.
+Every ported test must pass. If the original's tests can still run, run them too and
+compare results on the same inputs.
 
-## 7. Write PORTING.md
+## 7. Write the porting notes
 
-Include the API mapping, test mapping, deliberate differences, preserved quirks, and the
-exact commands and results. State plainly when a command could not run.
+Write a short `PORTING.md` beside the code that a reviewer can check in a few minutes:
+
+- **API mapping:** a table from each original function or type to its Go equivalent.
+- **Test mapping:** each original test and the Go test that covers it.
+- **Deliberate differences:** anything that now behaves differently, and why.
+- **Preserved quirks:** odd behavior kept on purpose, so nobody fixes it by accident.
+- **Verification:** the commands you ran and their results, or a plain statement that a
+  command couldn't run.
