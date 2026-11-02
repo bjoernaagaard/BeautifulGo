@@ -1,33 +1,47 @@
 #!/usr/bin/env python3
+"""Type-check every ```go block under skills/ as its own package."""
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
+GOIMPORTS = "golang.org/x/tools/cmd/goimports@v0.52.0"
+REQUIRES = ["golang.org/x/sync@v0.24.0", "github.com/google/go-cmp@v0.7.0"]
+
 root = Path(__file__).resolve().parents[1]
 examples = []
-for skill in (root / "skills").glob("*/SKILL.md"):
-    text = skill.read_text()
-    for index, block in enumerate(re.findall(r"```go\n(.*?)```", text, re.S), 1):
-        examples.append((skill, index, block))
+for doc in sorted((root / "skills").rglob("*.md")):
+    for block in re.findall(r"^```go\n(.*?)^```", doc.read_text(), re.S | re.M):
+        examples.append((doc.relative_to(root), block))
 
 if not examples:
-    print("no Go examples found")
-    sys.exit(0)
+    sys.exit("no Go examples found")
+
+
+def run(*args, cwd):
+    result = subprocess.run(args, cwd=cwd, text=True, capture_output=True)
+    if result.returncode != 0:
+        sys.exit(f"{' '.join(args)} failed:\n{result.stdout}{result.stderr}")
+
 
 with tempfile.TemporaryDirectory(prefix="beautifulgo-examples-") as temp:
     module = Path(temp)
     (module / "go.mod").write_text("module examplecheck\n\ngo 1.27\n")
-    source = ["package examplecheck"]
-    for number, (_, _, block) in enumerate(examples, 1):
-        source.append(f"func example{number}() {{\n{block}\n}}")
-    (module / "examples.go").write_text("\n\n".join(source) + "\n")
-    result = subprocess.run(["gofmt", "-e", str(module / "examples.go")], text=True, capture_output=True)
+    run("go", "get", *REQUIRES, cwd=module)
+    owners = {}
+    for number, (doc, block) in enumerate(examples, 1):
+        name = f"ex{number:03d}"
+        owners[name] = doc
+        (module / name).mkdir()
+        source = block if block.startswith("package ") else f"package {name}\n\n{block}"
+        (module / name / "example.go").write_text(source)
+    run("go", "run", GOIMPORTS, "-w", ".", cwd=module)
+    run("go", "mod", "tidy", cwd=module)
+    result = subprocess.run(["go", "vet", "./..."], cwd=module, text=True, capture_output=True)
     if result.returncode != 0:
-        print(result.stderr, file=sys.stderr)
-        sys.exit(result.returncode)
+        for name, doc in owners.items():
+            result.stderr = result.stderr.replace(f"{name}/example.go", f"{doc} ({name})")
+        sys.exit(result.stderr)
 
-print(f"formatted {len(examples)} Go examples")
-shutil.rmtree(temp, ignore_errors=True)
+print(f"type-checked {len(examples)} Go examples")
