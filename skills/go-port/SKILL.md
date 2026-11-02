@@ -24,8 +24,8 @@ and adds Go's verbosity on top. Port the behavior, not the structure.
    counts as an error versus a valid edge case.
 3. Note what is incidental, meaning things the original does only because of its
    language: manual memory management, out-parameters, `NULL` returns, global state,
-   fixed buffers, a class that only groups functions, or `isinstance` checks. These don't
-   carry over.
+   fixed buffers, a class that only groups functions, or `isinstance` checks. Leave those
+   habits out of the port.
 4. If the original has a bug or an ambiguity, keep its behavior, flag it in the porting
    notes, and let the user decide. A port is not the place to fix things silently.
 

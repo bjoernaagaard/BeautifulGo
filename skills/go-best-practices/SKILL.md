@@ -1,7 +1,7 @@
 ---
 name: go-best-practices
 description: >-
-  Write idiomatic, robust, maintainable Go. Use whenever you write, review, refactor,
+  Write idiomatic, correct, maintainable Go. Use whenever you write, review, refactor,
   debug, or explain Go code: packages, functions, types, interfaces, errors, goroutines,
   channels, context, generics, iterators, go.mod, or tests. Trigger on Go, golang, .go
   files, gofmt, go vet, go fix, golangci-lint, context, goroutines, or channels, even
