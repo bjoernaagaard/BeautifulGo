@@ -24,7 +24,11 @@ for skill in skills:
         errors.append(f"{skill}: missing description")
     if body.count("\n") > 500:
         errors.append(f"{skill}: body exceeds 500 lines")
-    for link in re.findall(r"\[[^\]]+\]\(([^)]+)\)", body):
+    for path in re.findall(r"`((?:references|assets)/[^`\s]+)`", body):
+        if not (skill.parent / path).exists():
+            errors.append(f"{skill}: missing file {path}")
+    prose = re.sub(r"^```.*?^```|`[^`\n]*`", "", body, flags=re.S | re.M)
+    for link in re.findall(r"\[[^\]]+\]\(([^)]+)\)", prose):
         if "://" not in link and not (skill.parent / link).exists():
             errors.append(f"{skill}: broken link {link}")
 
