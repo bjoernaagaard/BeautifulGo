@@ -219,7 +219,7 @@ func describe(err error) string {
 - **`panic` is for programmer errors:** impossible states, broken invariants, or invalid
   constant input to a `Must` function at package initialization (`regexp.MustCompile`).
   A library never panics on caller input, and never uses `recover` for control flow. When a
-  handler panics, `net/http` recovers, logs the stack, and drops the connection; add your
+  handler panics, `net/http` recovers, logs the stack, and closes the HTTP/1 connection or resets the HTTP/2 stream; add your
   own recovery middleware only if clients must get a 500 response.
 - **`os.Exit` and `log.Fatal` only in `main`.** Have `main` call `run() error` so deferred
   cleanup runs and tests can call `run`.
