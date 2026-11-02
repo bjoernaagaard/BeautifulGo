@@ -102,11 +102,12 @@ type ParseError struct {
 func (e *ParseError) Error() string { return fmt.Sprintf("line %d: %v", e.Line, e.Err) }
 func (e *ParseError) Unwrap() error { return e.Err }
 
-func open(name string) error {
-	if _, err := os.Open(name); err != nil {
-		return fmt.Errorf("open store %q: %w", name, err)
+func open(name string) (*os.File, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return nil, fmt.Errorf("open store %q: %w", name, err)
 	}
-	return nil
+	return f, nil
 }
 ```
 

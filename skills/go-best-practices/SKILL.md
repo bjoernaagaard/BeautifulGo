@@ -236,9 +236,9 @@ func describe(err error) string {
   "not found"; return `ok bool` or an error.
 - **`panic` is for programmer errors:** impossible states, broken invariants, or invalid
   constant input to a `Must` function at package initialization (`regexp.MustCompile`).
-  A library never panics on caller input, and never uses `recover` for control flow. A
-  server may recover at the request boundary to log and return 500; `net/http` already
-  does.
+  A library never panics on caller input, and never uses `recover` for control flow. When a
+  handler panics, `net/http` recovers, logs the stack, and drops the connection; add your
+  own recovery middleware only if clients must get a 500 response.
 - **`os.Exit` and `log.Fatal` only in `main`.** Have `main` call `run() error` so deferred
   cleanup runs and tests can call `run`.
 
@@ -362,9 +362,10 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
   that cancels when the test ends, `t.TempDir()` and `t.Chdir()` for files, and
   `t.Setenv` for environment variables.
 - **Errors** are checked with `errors.Is` or `errors.AsType`, not by comparing text.
-- **Time and concurrency:** wrap tests that use timers, tickers, or `time.Sleep` in
-  `synctest.Test(t, func(t *testing.T) { ... })` so they run on a fake clock and can't
-  flake.
+- **Time and concurrency:** test code that waits on timers, tickers, or `time.Sleep` inside
+  `synctest.Test(t, func(t *testing.T) { ... })`, so it runs on a fake clock and can't
+  flake. Put the bubble inside each subtest, keep real network I/O out of it, and don't
+  call `t.Run` or `t.Parallel` inside it.
 - **HTTP:** test handlers with `httptest.NewRecorder` and clients against
   `httptest.NewServer`. Don't mock `http.Client`.
 - **Benchmarks** use `for b.Loop() { ... }`, which keeps the compiler from deleting the

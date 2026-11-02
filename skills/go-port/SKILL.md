@@ -51,7 +51,7 @@ module's `go` line allows (iterators, `min`/`max`, `slices`, `maps`, `errors.AsT
 | `NULL` meaning "absent" | A comma-ok result, or a nil pointer or slice where nil is already meaningful |
 | Error codes, `-1`, `errno` | An `error`; one sentinel (`ErrX`) per code callers test, or an error type with fields |
 | Out-parameters (`int *err_line`) | Extra return values, or fields on the error type |
-| Flag bitmasks | An options struct with named `bool` fields, or a named integer type with `iota << n` constants |
+| Flag bitmasks | An options struct with named `bool` fields, or a named integer type with `1 << iota` constants (explicit values when the original's numbers are visible) |
 | `char *` plus length, `strcmp`, `strcasecmp` | `string` or `[]byte`, `==`, `strings.EqualFold` |
 | Pointer plus count | A slice |
 | Fixed-size buffers | Growing slices and `strings.Builder`; keep a limit only if it is behavior |

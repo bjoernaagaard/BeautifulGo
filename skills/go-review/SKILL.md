@@ -59,8 +59,9 @@ The first two groups are where real bugs live.
 - Context misuse: a derived context whose `cancel` is never called, `context.Background()`
   inside a request path, a context stored in a struct, or a blocking call that ignores
   `ctx.Done()`.
-- Resource leaks: a file, response body, `sql.Rows`, or ticker that isn't closed, or is
-  closed only on the happy path; `defer` inside a loop over many items.
+- Resource leaks: a file, response body, or `sql.Rows` that isn't closed, or is closed
+  only on the happy path; `defer` inside a loop over many items; a ticker that keeps
+  firing after its work is done because nobody calls `Stop`.
 - Copied locks and atomics (a value receiver on a type with a `sync.Mutex`), and a typed
   nil pointer returned as `error`.
 - Unbounded input: `io.ReadAll` on a request body without `http.MaxBytesReader`, file

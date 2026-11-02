@@ -158,6 +158,10 @@ tests that depend on time.
 - `Test` waits for all bubble goroutines to exit and fails with a deadlock panic if they are
   all blocked and no timer is pending. A goroutine leak in the code under test fails the test.
 - Do not sleep to wait for a goroutine in a test. Use `synctest.Wait()` or a channel.
+- Inside the bubble, do not call `t.Run`, `t.Parallel`, or `t.Deadline`. In a table test, start
+  one bubble inside each subtest.
+- Keep real network I/O out of the bubble, because a goroutine blocked on a socket read is not
+  durably blocked and the clock stops. Use `net.Pipe` or an in-memory fake instead.
 
 ```go
 func TestTimeout(t *testing.T) {
