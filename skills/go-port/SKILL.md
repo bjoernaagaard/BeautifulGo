@@ -47,12 +47,12 @@ module's `go` line allows (iterators, `min`/`max`, `slices`, `maps`, `errors.AsT
 
 | In the original | In Go |
 |---|---|
-| `malloc`/`free`, `new`/`delete`, `create`/`destroy` pairs | Values and slices the garbage collector frees; `Close` only for OS resources |
+| `malloc`/`free`, `new`/`delete`, `create`/`destroy` pairs | Values and slices the garbage collector frees; `Close` only for resources with explicit release, such as files, connections, and rows |
 | `NULL` meaning "absent" | A comma-ok result, or a nil pointer or slice where nil is already meaningful |
 | Error codes, `-1`, `errno` | An `error`; one sentinel (`ErrX`) per code callers test, or an error type with fields |
 | Out-parameters (`int *err_line`) | Extra return values, or fields on the error type |
 | Flag bitmasks | An options struct with named `bool` fields, or a named integer type with `1 << iota` constants (explicit values when the original's numbers are visible) |
-| `char *` plus length, `strcmp`, `strcasecmp` | `string` or `[]byte`, `==`, `strings.EqualFold` |
+| `char *` plus length, `strcmp`, `strcasecmp` | `string` or `[]byte`; `==` and `strings.EqualFold` for equality, `<` or `strings.Compare` for ordering |
 | Pointer plus count | A slice |
 | Fixed-size buffers | Growing slices and `strings.Builder`; keep a limit only if it is behavior |
 | `#define` constants and macros | `const`, typed constants, and functions |
@@ -93,7 +93,7 @@ package behind a safe API.
   have no Go equivalent and disappear.
 - Older Go: replace `io/ioutil`, `interface{}`, `sort.Slice`, `x := x` loop copies,
   `wg.Add(1)` with `defer wg.Done()`, `errors.As` targets, pointer helpers, and
-  `b.N` loops. Run `go fix ./...` first and review its diff.
+  `b.N` loops. Run `go fix -diff ./...` to preview, then `go fix ./...` to apply.
 
 ## 4. Keep the port proportionate
 

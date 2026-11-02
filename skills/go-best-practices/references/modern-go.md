@@ -33,18 +33,6 @@ last section lists every `go fix` analyzer.
 - The `go` line is now a strict minimum. A toolchain older than the line refuses to build
   and can download the right one (the `toolchain` line).
 
-```go
-func clamp(v, lo, hi int) int {
-	return min(max(v, lo), hi)
-}
-
-func sortedUnique(xs []string) []string {
-	xs = slices.Clone(xs)
-	slices.Sort(xs)
-	return slices.Compact(xs)
-}
-```
-
 ## Go 1.22
 
 - Each loop iteration has its own variable. Delete `x := x` and `tc := tc` copies. This
@@ -101,7 +89,7 @@ func sortedUnique(xs []string) []string {
   `Add` called inside the goroutine.
 - Use `testing/synctest` (`synctest.Test(t, func(t *testing.T) { ... })`) instead of real
   sleeps and flaky timeouts. Inside the bubble the clock is fake and `synctest.Wait()` waits
-  until every goroutine in the bubble is blocked. The Go 1.24 `synctest.Run` experiment is
+  until every other goroutine in the bubble is durably blocked. The Go 1.24 `synctest.Run` experiment is
   gone.
 - `GOMAXPROCS` follows the cgroup CPU limit on Linux and updates when the limit changes.
   Delete `automaxprocs`. Setting `GOMAXPROCS` yourself turns this off.
@@ -113,7 +101,7 @@ func sortedUnique(xs []string) []string {
 
 - `new` takes an expression: `new(10)`, `new("x")`, `new(time.Second)`. Delete `ptr(v)` and
   `intPtr` helpers. The `newexpr` analyzer rewrites calls to such helpers.
-- Use `errors.AsType[T](err)` instead of `var target *T; errors.As(err, &target)`. It is
+- Use `errors.AsType[*T](err)` instead of `var target *T; errors.As(err, &target)`. It is
   type safe, allocates less, and fails to compile when `T` is not an error. The
   `errorsastype` analyzer rewrites it.
 - A generic type may refer to itself in its type parameter list, so recursive constraints
@@ -159,37 +147,8 @@ func headAndExt(name string) (string, string) {
 }
 ```
 
-## Analyzers in `go tool fix help`
+## Analyzers in `go fix`
 
-Run `go fix -diff ./...` to preview and `go fix ./...` to apply. All analyzers run by default.
-Disable one with `-NAME=false` or select with `-NAME`. Fixes respect the `go` line and build
-tags. The table lists the analyzers in the Go 1.27.3 toolchain.
-
-| Analyzer | What it rewrites |
-|---|---|
-| `any` | `interface{}` to `any` |
-| `atomictypes` | `atomic.AddInt64(&n, 1)` style calls to `atomic.Int64` methods |
-| `buildtag` | reports bad `//go:build` and `// +build` lines |
-| `embedlit` | `T{Base: Base{X: 1}}` to the shorter promoted field form |
-| `errorsastype` | `errors.As` with a target variable to `errors.AsType[T]` |
-| `forvar` | removes `x := x` loop variable copies |
-| `hostport` | reports `Sprintf("%s:%d")` addresses passed to `net.Dial` |
-| `inline` | calls to functions marked `//go:fix inline`, replaced by their body |
-| `mapsloop` | loops over a map to `maps.Copy`, `maps.Insert`, `maps.Clone`, `maps.Collect` |
-| `minmax` | `if`/`else` choosing a value to `min` or `max` |
-| `newexpr` | pointer helper calls to `new(expr)` |
-| `omitzero` | `omitempty` on struct fields to `omitzero` |
-| `plusbuild` | removes obsolete `//+build` comments |
-| `rangeint` | three-clause counting loops to `for i := range n` |
-| `reflecttypefor` | `reflect.TypeOf(x)` of a known type to `reflect.TypeFor[T]()` |
-| `slicesbackward` | backward index loops to `slices.Backward` |
-| `slicescontains` | search loops to `slices.Contains` or `slices.ContainsFunc` |
-| `slicessort` | `sort.Slice` on basic types to `slices.Sort` |
-| `stditerators` | `Len`/`At` style loops to the standard iterator methods |
-| `stringsbuilder` | `s += x` in a loop to `strings.Builder` |
-| `stringscut` | `strings.Index` plus slicing to `strings.Cut` |
-| `stringscutprefix` | `HasPrefix` plus `TrimPrefix` to `strings.CutPrefix` |
-| `stringsseq` | ranging over `Split` or `Fields` to `SplitSeq` or `FieldsSeq` |
-| `testingcontext` | `context.WithCancel` in tests to `t.Context()` |
-| `unsafefuncs` | `unsafe.Pointer` arithmetic to `unsafe.Add` and `unsafe.Slice` calls |
-| `waitgroupgo` | `wg.Add(1)`, `go`, `defer wg.Done()` to `wg.Go` |
+Run `go fix -diff ./...` to preview and `go fix ./...` to apply. All analyzers run by default,
+and the fixes respect the `go` line and build tags. Run `go tool fix help` for the current list,
+and `go tool fix help NAME` for what one analyzer checks or rewrites.

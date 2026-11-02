@@ -64,7 +64,7 @@ against, because the `go` line is a minimum for every importer.
 | 1.23 | iterators: `iter.Seq`, `slices.Collect`, `maps.Keys`, `slices.Sorted` | building a slice only to range over it |
 | 1.24 | generic type aliases; `t.Context()`, `b.Loop()`, `t.Chdir`; `os.Root`; `omitzero`; `tool` lines in `go.mod`; `strings.SplitSeq`; `runtime.AddCleanup`; `crypto/rand.Text` | `context.WithCancel` in tests, `for i := 0; i < b.N; i++`, `tools.go`, `SetFinalizer` |
 | 1.25 | `sync.WaitGroup.Go`; `testing/synctest`; `http.CrossOriginProtection`; container-aware `GOMAXPROCS` | `wg.Add(1)` plus `defer wg.Done()`, sleeping in tests, hand-rolled CSRF checks |
-| 1.26 | `new(expr)`; `errors.AsType[T]`; the modernizers in `go fix` | `ptr(v)` helpers, `var target *T; errors.As(err, &target)` |
+| 1.26 | `new(expr)`; `errors.AsType[*T]`; the modernizers in `go fix` | `ptr(v)` helpers, `var target *T; errors.As(err, &target)` |
 | 1.27 | generic methods; `encoding/json/v2`; the `uuid` package; the `goroutineleak` profile | free functions that exist only to add a type parameter, third-party UUID modules |
 
 - Pin developer tools with `go get -tool golang.org/x/vuln/cmd/govulncheck` and run them with
@@ -100,7 +100,6 @@ against, because the `go` line is a minimum for every importer.
 - Name fields in composite literals, except in a small local test table.
 - Don't shadow predeclared identifiers (`len`, `new`, `error`, `min`, `max`, `clear`) or
   package names (`url := url.Parse(...)` breaks the next call).
-- Use `any`, not `interface{}`.
 - A function that formats like `fmt.Printf` ends in `f`, so `go vet` checks its verbs.
 - Order a file as: the main type, its constructor, exported methods, unexported methods,
   then helpers. Group related `const` and `var` declarations.
@@ -133,26 +132,9 @@ func writeReport(path string, data []byte) (err error) {
 }
 ```
 
-- **`new(expr)` replaces pointer helpers.** Write `Limit: new(10)`, not a `ptr(10)` or
-  `intPtr` helper. `go fix` rewrites the helpers for you.
 - **Iterators for sequences callers stream.** Return `iter.Seq[T]` or `iter.Seq2[K, V]`
-  when the caller may stop early or the data is large. Return a slice when the caller
-  needs `len`, indexing, or a second pass.
-
-```go
-func (s *Store) Active() iter.Seq[User] {
-	return func(yield func(User) bool) {
-		for _, u := range s.users {
-			if u.Active && !yield(u) {
-				return
-			}
-		}
-	}
-}
-
-type User struct{ Active bool }
-type Store struct{ users []User }
-```
+  when the caller may stop early or the data is large, and stop calling `yield` once it
+  returns false. Return a slice when the caller needs `len`, indexing, or a second pass.
 
 - Use `slices` and `maps` for searching, sorting, cloning, and comparing:
   `slices.Contains`, `slices.SortFunc(xs, func(a, b T) int { return cmp.Compare(a.K, b.K) })`,
