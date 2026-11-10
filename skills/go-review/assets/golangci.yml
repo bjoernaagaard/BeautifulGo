@@ -1,5 +1,8 @@
 # golangci-lint v2 configuration for the rules in skills/go-best-practices.
 # Copy it to the module root as .golangci.yml. Checked against golangci-lint 2.15 and Go 1.27.
+# modernize does not report errors.As targets, context.WithCancel in tests, or b.N loops;
+# run `go fix -diff ./...` for those. staticcheck ST1005 checks error strings, and
+# modernize reports interface{}.
 version: "2"
 
 linters:
@@ -47,8 +50,7 @@ linters:
 
   settings:
     errcheck:
-      check-blank: true
-      check-type-assertions: true
+      check-blank: true # forcetypeassert reports unchecked type assertions
     exhaustive:
       default-signifies-exhaustive: true
     govet:
@@ -68,7 +70,6 @@ linters:
         - name: early-return
         - name: error-naming
         - name: error-return
-        - name: error-strings
         - name: errorf
         - name: exported
         - name: flag-parameter
@@ -83,7 +84,6 @@ linters:
         - name: unexported-return
         - name: unreachable-code
         - name: unused-parameter
-        - name: use-any
         - name: var-declaration
         - name: var-naming
     sloglint:

@@ -10,7 +10,7 @@ format, e.g. Claude Code, OpenAI Codex, Cursor, and Gemini CLI.
   finding cites a rule and shows the fix.
 - `go-port` ports C, C++, Python, Java, JavaScript, TypeScript, Rust, or older Go into Go
   with the same behavior, and ports the original tests first.
-- `lints/golangci.yml` enforces the rules that a linter can check.
+- `skills/go-review/assets/golangci.yml` enforces the rules that a linter can check.
 
 The project follows the same design as
 [Beautiful Rust](https://github.com/morganlinton/BeautifulRust), which does the same job
@@ -22,14 +22,15 @@ for Rust.
 skills/
 ├── go-best-practices/
 │   ├── SKILL.md              # the rules the agent follows when it writes Go
-│   └── references/           # one digest per source, read when a rule needs its reason
+│   └── references/           # source digests, read when a rule needs its reason
 ├── go-review/
 │   ├── SKILL.md              # review order, severity levels, and report rules
-│   └── assets/review-template.md
+│   └── assets/
+│       ├── review-template.md
+│       └── golangci.yml      # golangci-lint v2 configuration
 └── go-port/
     └── SKILL.md              # mapping tables per source language, and porting notes
 lints/
-├── golangci.yml              # golangci-lint v2 configuration
 └── check/violations.go       # one known violation per linter, used to test the configuration
 scripts/                      # the checks that CI runs on every pull request
 ```
@@ -48,7 +49,7 @@ flowchart LR
     review -- style rules --> write
     port -- style rules --> write
     write -- reasons --> refs[references/ digests]
-    review -- suggests --> lints[lints/golangci.yml]
+    review -- suggests --> lints[assets/golangci.yml]
     write --> tools[go fix, gofmt, go vet, golangci-lint, go test -race]
     review --> tools
     port --> tools
@@ -106,7 +107,7 @@ The old version has several problems that the rules address.
 - The caller can't cancel the requests, because the function takes no context. The
   skill puts `ctx` first in every function that blocks.
 - The function logs errors and drops them, and it ignores the read error. The skill says
-  to return each error once, with context, and `errcheck` catches the ignored error.
+  to return each error once, with context, and `errcheck` with this config's `check-blank` catches the ignored error.
 - The response body is never closed, and `bodyclose` and `noctx` report the `http.Get`
   call.
 - The function starts one goroutine per URL with no limit. The skill starts goroutines
@@ -156,11 +157,11 @@ mentions Go, a `.go` file, or a Go tool.
 
 ## Use the lint configuration
 
-Copy `lints/golangci.yml` to the root of your module as `.golangci.yml`, and run
+Copy `skills/go-review/assets/golangci.yml` to the root of your module as `.golangci.yml`, and run
 golangci-lint 2.15 or later.
 
 ```bash
-cp BeautifulGo/lints/golangci.yml your-module/.golangci.yml
+cp BeautifulGo/skills/go-review/assets/golangci.yml your-module/.golangci.yml
 cd your-module && golangci-lint run
 ```
 
@@ -182,7 +183,7 @@ CI runs three checks on every pull request, and you can run the same checks loca
 ```bash
 python3 scripts/check-skill.py      # front matter, links, and referenced files exist
 python3 scripts/check-examples.py   # every Go example in the skills type-checks
-sh scripts/check-lints.sh           # the configuration is valid and reports each fixture violation
+sh scripts/check-lints.sh           # the configuration is valid and each expected linter fires on the fixture
 ```
 
 The example check puts each Go code block in its own package. It then adds imports with
@@ -201,7 +202,7 @@ flowchart LR
 
 ## Sources
 
-The rules come from these sources, and each has a digest in
+The rules come from these sources, digested in
 `skills/go-best-practices/references/`. Where the sources disagree, the skill picks one
 rule and says why.
 
@@ -209,4 +210,7 @@ rule and says why.
   [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments) wiki
 - [Google Go Style Guide](https://google.github.io/styleguide/go/)
 - [Uber Go Style Guide](https://github.com/uber-go/guide/blob/master/style.md)
+- The Go blog posts on [pipelines](https://go.dev/blog/pipelines),
+  [context](https://go.dev/blog/context), and [synctest](https://go.dev/blog/synctest), and the
+  [errgroup](https://pkg.go.dev/golang.org/x/sync/errgroup) package docs
 - The [Go release notes](https://go.dev/doc/devel/release) from Go 1.21 to Go 1.27

@@ -93,9 +93,10 @@ package behind a safe API.
   interfaces or generic constraints; enums with data become an interface with one type
   per variant; `Drop` becomes `Close` plus `defer`. Lifetimes and ownership annotations
   have no Go equivalent and disappear.
-- Older Go: replace `io/ioutil`, `interface{}`, `sort.Slice`, `x := x` loop copies,
-  `wg.Add(1)` with `defer wg.Done()`, `errors.As` targets, pointer helpers, and
-  `b.N` loops. Run `go fix -diff ./...` to preview, then `go fix ./...` to apply.
+- Older Go: `go fix -diff ./...` previews and `go fix ./...` applies the rewrites for
+  `interface{}`, `sort.Slice`, `x := x` loop copies, `wg.Add(1)` with `defer wg.Done()`,
+  `errors.As` targets, and pointer helpers. Replace `io/ioutil` (staticcheck SA1019
+  flags it) and `b.N` loops by hand.
 
 ## 4. Keep the port proportionate
 
@@ -123,7 +124,8 @@ for a parser and compare outputs on its corpus rather than millions of random in
 
 ## 5. Optional similarity map
 
-If `jscpd` is installed, `jscpd --compare source/ target/` pairs functions in the
+If `jscpd` 5.4 or later is installed, the experimental `jscpd --compare source/ target/`
+(which may need `jscpd --semantic-download` first) pairs functions in the
 original with similar functions in the port, which helps you find code you haven't
 ported yet. Run it with the same paths and options each time, source first. A similar
 pair does not prove the two behave alike; the ported tests decide that.

@@ -4,8 +4,7 @@ Source: https://go.dev/doc/go1.21 through https://go.dev/doc/go1.27 (the release
 against the Go 1.27.3 toolchain with `go doc` and `go tool fix help`. Each release adds a few
 things that change how you write everyday code. Read this when the `go` line in `go.mod`
 moves up, when you review code that looks older than the toolchain, or when you pick between
-a library function and a hand-written loop. Every section lists "use X instead of Y". The
-last section lists every `go fix` analyzer.
+a library function and a hand-written loop. Every section lists "use X instead of Y".
 
 ## Using this digest
 
@@ -121,6 +120,10 @@ last section lists every `go fix` analyzer.
 - Use `encoding/json/v2` and `encoding/json/jsontext` for new code that needs strict
   decoding. Defaults reject invalid UTF-8 and duplicate names. Options such as
   `json.RejectUnknownMembers(true)` replace `Decoder.DisallowUnknownFields`.
+- `bytes.CutLast` and `strings.CutLast` split around the last separator, replacing
+  `LastIndex` plus slicing.
+- `encoding/json/v2` marshals a nil slice as `[]`, not `null`, unless you pass
+  `json.FormatNilSliceAsNull(true)`.
 - `encoding/json` now runs on the v2 engine, so decoding is faster. Do not match on its error
   text.
 - Use the `uuid` package (`uuid.New`, `uuid.Parse`) instead of a third-party UUID module.

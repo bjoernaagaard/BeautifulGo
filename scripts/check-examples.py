@@ -7,11 +7,13 @@ import tempfile
 from pathlib import Path
 
 GOIMPORTS = "golang.org/x/tools/cmd/goimports@v0.52.0"
-REQUIRES = ["golang.org/x/sync@v0.24.0", "github.com/google/go-cmp@v0.7.0"]
+REQUIRES = ["golang.org/x/sync@v0.25.0", "github.com/google/go-cmp@v0.7.0"]
 
 root = Path(__file__).resolve().parents[1]
 examples = []
 for doc in sorted((root / "skills").rglob("*.md")):
+    if "assets" in doc.parts:
+        continue
     for block in re.findall(r"^```go\n(.*?)^```", doc.read_text(), re.S | re.M):
         examples.append((doc.relative_to(root), block))
 
@@ -36,6 +38,9 @@ with tempfile.TemporaryDirectory(prefix="beautifulgo-examples-") as temp:
         (module / name).mkdir()
         source = block if block.startswith("package ") else f"package {name}\n\n{block}"
         (module / name / "example.go").write_text(source)
+    unformatted = subprocess.run(["gofmt", "-l", "."], cwd=module, text=True, capture_output=True).stdout.split()
+    if unformatted:
+        sys.exit("not gofmt-clean: " + ", ".join(f"{owners[Path(f).parent.name]} ({Path(f).parent.name})" for f in unformatted))
     run("go", "run", GOIMPORTS, "-w", ".", cwd=module)
     run("go", "mod", "tidy", cwd=module)
     result = subprocess.run(["go", "vet", "./..."], cwd=module, text=True, capture_output=True)

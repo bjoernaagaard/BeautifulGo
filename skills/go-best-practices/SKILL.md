@@ -10,27 +10,11 @@ description: >-
 
 # Go best practices
 
-Distilled from Effective Go, the Go Code Review Comments wiki, the Google Go Style Guide,
-the Uber Go Style Guide, and the Go release notes through Go 1.27. Each has a digest in
-`references/`. Where they disagree, this file chooses and says why.
+Follow Effective Go, the Go Code Review Comments wiki, and the Google and Uber style
+guides. This file holds the rules where they disagree, where models drift, and what
+changed through Go 1.27.
 
-## 1. Mindset
-
-- **Write Go-shaped code.** Return errors as values, model absence with the zero value or
-  a comma-ok result, compose with embedding and small interfaces, and keep control flow
-  visible. Class hierarchies, `Manager` and `Factory` types, getters on every field, and
-  exceptions emulated with `panic` are smells.
-- **Clarity first, then simplicity, then concision.** Code is read far more than it is
-  written. A reader should see what a line does without opening three other files.
-- **Application code is not library code.** A library (a module other modules import)
-  follows the API rules below strictly. An application stays direct: concrete types,
-  explicit parameters, no interface with one implementation, and no dependency-injection
-  framework.
-- **Let the tools do the work.** `gofmt` owns layout, `go vet` and `golangci-lint` own
-  mechanical checks, `go fix` owns modernization, and the race detector owns data races.
-  Spend review attention on design.
-
-## 2. Before you hand back code
+## 1. Before you hand back code
 
 From the module root, run:
 
@@ -38,87 +22,59 @@ From the module root, run:
 go fix -diff ./...      # modern idioms for the go version in go.mod
 gofmt -l .              # must print nothing
 go vet ./...
-golangci-lint run       # with lints/golangci.yml from this project, or the repo's own
+golangci-lint run       # the repo's config, else --config <go-review skill>/assets/golangci.yml
 go test -race ./...
 govulncheck ./...       # when dependencies or security-relevant code changed
 ```
 
-- Fix a finding rather than silencing it. When a lint is wrong for one line, suppress
-  that linter only and say why: `//nolint:gosec // G404: jitter, not a secret`.
-  `nolintlint` rejects a bare `//nolint`.
-- Run `go fix ./...` before a review rather than hand-editing loops into `range` and
-  `slices` calls. It only applies changes the `go` line in `go.mod` allows.
-- Use `-race` whenever the change touches goroutines, channels, or shared state. A race
-  report is a bug, never noise.
+- Fix a finding rather than silencing it. To suppress one line, name the linter and the
+  reason: `//nolint:gosec // G404: jitter, not a secret`.
+- Let `go fix ./...` do modernization instead of editing by hand.
+- A race report is a bug, never noise.
 
-## 3. Versions and modules
+## 2. Versions and modules
 
-Read the `go` line in `go.mod` before using a feature from the table. In a new module,
-declare the current release (`go 1.27`). In a library, declare the oldest release you test
-against, because the `go` line is a minimum for every importer.
+Read the `go` line in `go.mod` before you use a feature below. A new module declares the
+current release (`go 1.27`). A library declares the oldest release it tests, because the
+line is a minimum for every importer.
 
 | Since | Use | Instead of |
 |---|---|---|
 | 1.21 | `min`, `max`, `clear`; `slices`, `maps`, `cmp`; `log/slog`; `context.AfterFunc`, `WithoutCancel` | hand loops, `sort.Slice`, `log.Printf` |
 | 1.22 | a fresh loop variable per iteration; `for i := range n`; `http.ServeMux` patterns `"GET /items/{id}"` | `x := x` copies, third-party routers for simple routing |
 | 1.23 | iterators: `iter.Seq`, `slices.Collect`, `maps.Keys`, `slices.Sorted` | building a slice only to range over it |
-| 1.24 | generic type aliases; `t.Context()`, `b.Loop()`, `t.Chdir`; `os.Root`; `omitzero`; `tool` lines in `go.mod`; `strings.SplitSeq`; `runtime.AddCleanup`; `crypto/rand.Text` | `context.WithCancel` in tests, `for i := 0; i < b.N; i++`, `tools.go`, `SetFinalizer` |
+| 1.24 | generic type aliases; `t.Context()`, `b.Loop()`, `t.Chdir`; `os.Root`; `omitzero`; `tool` lines in `go.mod`; `strings.SplitSeq`; `runtime.AddCleanup`; `crypto/rand.Text`; `slog.DiscardHandler` | `context.WithCancel` in tests, `for i := 0; i < b.N; i++`, `tools.go`, `SetFinalizer` |
 | 1.25 | `sync.WaitGroup.Go`; `testing/synctest`; `http.CrossOriginProtection`; container-aware `GOMAXPROCS` | `wg.Add(1)` plus `defer wg.Done()`, sleeping in tests, hand-rolled CSRF checks |
 | 1.26 | `new(expr)`; `errors.AsType[*T]`; the modernizers in `go fix` | `ptr(v)` helpers, `var target *T; errors.As(err, &target)` |
 | 1.27 | generic methods; `encoding/json/v2`; the `uuid` package; the `goroutineleak` profile | free functions that exist only to add a type parameter, third-party UUID modules |
 
-- Pin developer tools with `go get -tool golang.org/x/vuln/cmd/govulncheck` and run them with
-  `go tool govulncheck`. Don't add a `tools.go` file with blank imports.
-- Commit `go.sum`. Run `go mod tidy` after any import change. Add a `toolchain` line only
+- Pin tools with `go get -tool <path>` and run them with `go tool <name>`.
+- Commit `go.sum` and run `go mod tidy` after import changes. Add a `toolchain` line only
   when the build needs a newer toolchain than the `go` line.
-- Every dependency costs build time, review time, and supply-chain exposure. Check the
-  standard library first, and don't add a framework, ORM, assertion library, or
-  dependency-injection container unless the module already uses one.
-- Avoid `golang.org/x/exp` when the standard library now has the same function
-  (`slices`, `maps`, `constraints` became `cmp.Ordered`). The `exptostd` linter finds them.
+- Check the standard library before adding a dependency. Add no framework, ORM, assertion
+  library, or dependency-injection container unless the module already uses one. Replace
+  `golang.org/x/exp` packages the standard library now provides.
 
-## 4. Names and declarations
+## 3. Names and declarations
 
-| Item | Form | Example |
-|---|---|---|
-| Exported / unexported | `MixedCaps` / `mixedCaps` | `ParseConfig`, `parseLine` |
-| Initialisms | one case throughout | `userID`, `HTTPClient`, `ServeHTTP` |
-| Packages | short, lowercase, one word, no underscores | `bytes`, `httptest` |
-| Receivers | one or two letters, the same on every method | `func (c *Client)` |
-| Interfaces with one method | the method name plus `er` | `Reader`, `Notifier` |
-| Sentinel errors / error types | `Err` prefix / `Error` suffix | `ErrNotFound`, `PathError` |
+- Package names supply context, so don't repeat them: `http.Client`, `user.Load`. No
+  `util`, `common`, `helpers`, `models`, or `misc` packages.
+- No `Get` prefix on getters. Use `Fetch` or `Load` when the call does I/O.
+- Initialisms keep one case: `userID`, `HTTPClient`. Receivers are one or two letters,
+  the same on every method.
+- Don't shadow predeclared names (`len`, `new`, `min`, `max`, `clear`) or package names.
+- An enum is a named type with `iota` constants, starting at `iota + 1` when the zero
+  value means "unset", with a `String` method.
 
-- Package names supply context, so don't repeat them: `http.Client`, not
-  `http.HTTPClient`; `user.Load`, not `user.LoadUser`. Avoid `util`, `common`, `helpers`,
-  `models`, and `misc`. Name a package after what it provides.
-- No `Get` prefix on getters: `Owner()` and `SetOwner()`. Use `Fetch` or `Load` when the
-  call does real work, such as I/O.
-- Short names for small scopes (`i`, `r`, `buf`), longer names as the distance between
-  declaration and use grows. Never `this` or `self`.
-- Use `var x T` for the zero value and `x := value` for anything else. Keep variables in
-  the narrowest scope, including `if err := f(); err != nil`.
-- Name fields in composite literals, except in a small local test table.
-- Don't shadow predeclared identifiers (`len`, `new`, `error`, `min`, `max`, `clear`) or
-  package names (`url := url.Parse(...)` breaks the next call).
-- A function that formats like `fmt.Printf` ends in `f`, so `go vet` checks its verbs.
-- Order a file as: the main type, its constructor, exported methods, unexported methods,
-  then helpers. Group related `const` and `var` declarations.
-- An enum is a named type with `iota` constants. Start at `iota + 1` when the zero value
-  must mean "unset", and give it a `String` method (or run `stringer`).
+## 4. Functions and control flow
 
-## 5. Functions and control flow
-
-- **Return early.** Handle the error or the uncommon case first and keep the happy path at
-  the left margin. No `else` after a `return`.
-- **No Boolean parameters in exported signatures.** `Render(true)` is unreadable at the
-  call site and can't grow a third mode. Use a named type, an options struct, or two
-  functions.
-- **Options structs** for three or more optional settings; pass them by value and make the
-  zero value mean "defaults". Use functional options (`WithTimeout(d)`) only in a library
-  whose constructor must stay compatible as options grow.
-- **Naked returns** only in a function short enough to see the named results.
-- **`defer` releases resources** right after acquisition succeeds. Check the error from
-  `Close` on anything you wrote to:
+- **Return early.** Keep the happy path at the left margin, with no `else` after `return`.
+- **No Boolean parameters in exported signatures.** Use a named type, an options struct,
+  or two functions.
+- **Options structs** for three or more optional settings, passed by value, with a zero
+  value that means "defaults". Use functional options only in a library whose constructor
+  must stay compatible.
+- **Check `Close` on anything you wrote to:**
 
 ```go
 func writeReport(path string, data []byte) (err error) {
@@ -132,68 +88,35 @@ func writeReport(path string, data []byte) (err error) {
 }
 ```
 
-- **Iterators for sequences callers stream.** Return `iter.Seq[T]` or `iter.Seq2[K, V]`
-  when the caller may stop early or the data is large, and stop calling `yield` once it
-  returns false. Return a slice when the caller needs `len`, indexing, or a second pass.
+- **Iterators** (`iter.Seq[T]`) when the caller may stop early or the data is large; stop
+  calling `yield` once it returns false. Return a slice when the caller needs `len`,
+  indexing, or a second pass.
 
-- Use `slices` and `maps` for searching, sorting, cloning, and comparing:
-  `slices.Contains`, `slices.SortFunc(xs, func(a, b T) int { return cmp.Compare(a.K, b.K) })`,
-  `slices.Sorted(maps.Keys(m))`. Sorting map keys gives output a stable order, because Go
-  randomizes map iteration on purpose.
+## 5. Types, interfaces, and generics
 
-## 6. Types, interfaces, and generics
+- **Accept interfaces, return concrete types.**
+- **Declare an interface beside its consumer,** only once a second implementation or a
+  real test double exists. Keep it to one to three methods, and never use a pointer to
+  an interface. Application code stays concrete, with no dependency-injection framework.
+  Libraries follow the API rules strictly.
+- **Receivers:** use pointer receivers when any method needs one, and don't mix kinds on
+  one type.
+- **Never embed `sync.Mutex` in an exported struct**, because `Lock` joins your API.
+- **Strong types for units and IDs:** `time.Duration` and `type OrderID string`.
+- **Generics** when several types repeat one algorithm. Don't use type parameters to dodge
+  an interface that has methods. Since Go 1.27 a method can take its own type parameters,
+  as in `func (l List[T]) Map[U any](f func(T) U) List[U]`. Interface methods still
+  can't be generic, and a generic method can't satisfy an interface method.
 
-- **Accept interfaces, return concrete types.** A function takes the smallest interface
-  it needs (`io.Reader`, not `*os.File`) and returns a struct pointer callers can use in
-  full.
-- **Define an interface beside its consumer**, not beside its implementation, and only once
-  a second implementation or a real test double exists. A package that exports an
-  interface and its only implementation is Java in Go syntax.
-- **Keep interfaces small:** one to three methods. Compose bigger ones from smaller ones
-  (`io.ReadWriteCloser`).
-- **Never take or store a pointer to an interface.**
-- **Assert an implementation at compile time** when the relationship matters:
-  `var _ http.Handler = (*Server)(nil)`.
-- **Receivers:** pointer receivers when the method mutates, the struct holds a lock or is
-  large, or any other method needs one. Don't mix pointer and value receivers on one type
-  (`recvcheck` flags it).
-- **Make the zero value useful** where that's safe: `var buf bytes.Buffer` and
-  `var mu sync.Mutex` work without a constructor. When it can't be, unexport the type's
-  fields and provide `New`.
-- **Embedding is composition, not inheritance.** Embedding exports every promoted method.
-  Don't embed a type in an exported struct only to save typing, and never embed
-  `sync.Mutex` in an exported struct, because `Lock` becomes part of your API.
-- **Strong types for units and IDs.** `time.Duration`, `time.Time`, and named types like
-  `type OrderID string` stop callers mixing values. Prefer `uuid.UUID` from the standard
-  library for UUIDs.
-- **Generics** when several types would otherwise repeat the same algorithm or container
-  code: `func Index[S ~[]E, E comparable](s S, v E) int`. Don't use type parameters to
-  dodge an interface that has methods; an interface with methods is already polymorphic.
-  Since Go 1.27, methods can take their own type parameters, so a transform like
-  `func (l List[T]) Map[U any](f func(T) U) List[U]` is a method; interface methods still
-  can't be generic.
-- Use `~T` constraints so named types work, and `cmp.Ordered` or `comparable` before
-  inventing a constraint.
+## 6. Errors and panics
 
-## 7. Errors and panics
-
-| Situation | Use |
-|---|---|
-| Absence is normal (`map` lookup, cache miss) | comma-ok: `v, ok := m[k]` |
-| The caller may act on what failed | an `error` value |
-| A bug or broken invariant inside your code | `panic` with a message that has the values |
-
-- **Check every error.** Ignore one only with a comment that says why it's safe:
-  `_ = conn.SetDeadline(t) // best effort; the read below reports a dead conn`.
-- **Handle an error once.** Return it with context, or log it and stop, never both. Logging
-  at every level writes one failure five times.
-- **Add context that callers lack**, lowercase, no trailing punctuation, no "failed to":
+- **Handle an error once.** Return it with context, or log it and stop, never both.
+- **Add context the caller lacks**, lowercase, without "failed to":
   `fmt.Errorf("load config %s: %w", path, err)`.
-- **`%w` or `%v` is an API choice.** `%w` lets callers match the cause with `errors.Is`
-  and makes the cause part of your contract. Use `%v` when the cause is an internal detail
-  you may change.
-- **Match with `errors.Is` and `errors.AsType`.** Never compare `err.Error()` strings, and
-  never use `==` on an error that might be wrapped.
+- **`%w` makes the cause part of your API.** Use `%v` when the cause is an internal
+  detail you may change.
+- **Match with `errors.Is` and `errors.AsType`**, never by error text or `==` on a
+  wrapped error:
 
 ```go
 func describe(err error) string {
@@ -207,37 +130,24 @@ func describe(err error) string {
 }
 ```
 
-- **Exported functions return the `error` interface,** never `*MyError`. A nil `*MyError`
-  stored in an `error` is not `nil`, and the caller's `err != nil` check fires.
-- **Sentinels** (`var ErrNotFound = errors.New("not found")`) for conditions callers test
-  for. **Error types** (`type ParseError struct{ Line int; Err error }` with `Unwrap`) when
-  callers need fields. Export only what callers can act on.
-- **Combine independent errors** with `errors.Join`, for example when closing several
-  resources.
-- **No in-band sentinels.** Don't return `-1`, `""`, or `nil, nil` to mean "failed" or
-  "not found"; return `ok bool` or an error.
-- **`panic` is for programmer errors:** impossible states, broken invariants, or invalid
-  constant input to a `Must` function at package initialization (`regexp.MustCompile`).
-  A library never panics on caller input, and never uses `recover` for control flow. When a
-  handler panics, `net/http` recovers, logs the stack, and closes the HTTP/1 connection or resets the HTTP/2 stream; add your
-  own recovery middleware only if clients must get a 500 response.
-- **`os.Exit` and `log.Fatal` only in `main`.** Have `main` call `run() error` so deferred
-  cleanup runs and tests can call `run`.
+- **Exported functions return the `error` interface**, never `*MyError`, because a nil
+  `*MyError` in an `error` is not `nil`.
+- **Ignore an error only with a comment** that says why it's safe.
+- **No in-band sentinels** such as `-1`, `""`, or `nil, nil` for "not found". Return
+  `ok bool` or an error.
+- **`panic` only for programmer errors**, never for caller input, and never `recover` for
+  control flow. `os.Exit` and `log.Fatal` only in `main`, which calls `run() error`.
 
-## 8. Context and concurrency
+## 7. Context and concurrency
 
-- **`ctx context.Context` is the first parameter** of every function that blocks, does
-  I/O, or calls something that does. Don't store it in a struct (`containedctx`), and
-  don't replace a caller's context with `context.Background()` (`contextcheck`).
-- **Cancel what you derive:** `ctx, cancel := context.WithTimeout(ctx, d)` is followed by
-  `defer cancel()`. Use `context.WithoutCancel` for work that must outlive the request,
-  such as an audit write, and `context.WithCancelCause` when the reason matters.
-- **Context values** carry request-scoped data such as a trace ID, never optional
-  parameters. Key them with an unexported type.
-- **Prefer synchronous APIs.** Let the caller add concurrency. A function that starts a
-  goroutine and returns hides a lifetime the caller can't see.
-- **Every goroutine has an owner, a stop signal, and a wait.** No fire-and-forget. Start
-  goroutines with `wg.Go` or `errgroup.Group.Go`, so the wait can't be forgotten:
+- **`ctx` is the first parameter** of anything that blocks or does I/O. Never store it in
+  a struct or replace the caller's with `context.Background()`. `defer cancel()` after
+  every derived context.
+- **Context values** carry request-scoped data, never optional parameters.
+- **Prefer synchronous APIs** and let the caller add concurrency.
+- **Every goroutine has an owner, a stop signal, and a wait.** Start goroutines with
+  `wg.Go`. Use `errgroup` from `golang.org/x/sync` only when you need the first error,
+  cancellation of the rest, or `SetLimit`:
 
 ```go
 func fetchAll(ctx context.Context, urls []string) ([][]byte, error) {
@@ -273,146 +183,72 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
 }
 ```
 
-- **Channels transfer ownership; mutexes protect state.** Pick whichever makes the code
-  shorter. Keep the mutex next to the fields it guards, keep critical sections a few lines
-  long, and never call a caller's function or block on I/O while holding a lock.
-- **Channels:** the sender closes, once. Declare direction in signatures (`<-chan T`,
-  `chan<- T`). Unbuffered or size one by default; a bigger buffer needs a stated reason.
-  Every blocking send or receive also selects on `ctx.Done()`.
-- **Don't copy values that contain a lock or an atomic** (`go vet` copylocks). Use typed
-  atomics (`atomic.Int64`, `atomic.Pointer[T]`) for a lone counter or flag, and
-  `sync.OnceValue` or `sync.OnceFunc` for lazy initialization.
-- **No goroutines in `init`.** Expose `Start`, `Close`, or `Shutdown`, and give background
-  loops a context.
-- **Find leaks.** Test concurrent code with `go test -race`, use `testing/synctest` for
-  code that waits on time, and inspect `pprof.Lookup("goroutineleak")` when goroutine
-  counts grow.
+- **Locks:** keep the mutex beside the fields it guards, and never call caller code or
+  block on I/O while holding it.
+- **Channels:** the sender closes, once. Declare direction in signatures. Buffer size is
+  zero or one unless you state a reason. Every blocking send or receive also selects on
+  `ctx.Done()`.
+- Use typed atomics (`atomic.Int64`) for a lone counter and `sync.OnceValue` for lazy
+  initialization. No goroutines in `init`.
+- When goroutine counts grow, inspect `pprof.Lookup("goroutineleak")`.
 
-## 9. Data, I/O, and boundaries
+## 8. Data, I/O, and boundaries
 
-- **Slices:** a nil slice is a valid empty slice; test with `len(s) == 0`. Preallocate
-  with `make([]T, 0, n)` when `n` is known. Copy (`slices.Clone`, `maps.Clone`) a slice or
-  map at an API boundary when retaining it would share mutable state.
-- **Maps:** a nil map reads fine and panics on write. Iteration order is random, so sort
-  keys before output, hashing, or golden files.
-- **Time:** `time.Duration` for spans, `time.Time` for instants, both at API boundaries.
-  A field such as `TimeoutSeconds int` is a bug waiting for a unit mix-up; if a wire format
-  forces one, put the unit in the name.
-- **Strings:** `strings.Builder` or `fmt.Fprintf` for repeated construction, `strconv`
-  for conversions, `strings.Cut` and `strings.CutPrefix` for splitting once.
-- **JSON:** use `omitzero` rather than `omitempty` for structs, `time.Time`, and values
-  whose zero value is meaningful. New code that needs strict decoding (duplicate keys,
-  invalid UTF-8, case-sensitive names) uses `encoding/json/v2`. Since Go 1.27,
-  `encoding/json` runs on the v2 engine, so don't assert on its error text.
-- **Files from untrusted names:** open them through `os.OpenRoot(dir)` so `../` and
-  symlinks can't escape the directory.
-- **Randomness:** `crypto/rand` for anything secret (`rand.Text()` for tokens);
-  `math/rand/v2` for everything else. Never seed a global generator.
-- **HTTP servers:** set `ReadHeaderTimeout` on `http.Server`, shut down with
-  `srv.Shutdown(ctx)` under a deadline, register routes as `mux.HandleFunc("GET
-  /items/{id}", h)` and read `r.PathValue("id")`, and wrap state-changing browser
-  endpoints in `http.NewCrossOriginProtection()`.
-- **HTTP clients:** never use the default client without a timeout for outbound calls,
-  build requests with `http.NewRequestWithContext`, and always close the response body.
-- **Configuration** is read once in `main` and passed down. Don't read environment
-  variables or flags inside libraries or request handlers.
-- **Finalizers:** use `runtime.AddCleanup`, not `runtime.SetFinalizer`, and never for
-  anything a `Close` method should do.
+- Clone a slice or map at an API boundary when keeping it would share mutable state.
+- Sort map keys before output, hashing, or golden files.
+- Spans are `time.Duration` and instants are `time.Time`. If a wire format forces a bare
+  number, put the unit in the name.
+- **JSON:** use `omitzero` for structs, `time.Time`, and values whose zero value is
+  meaningful, and keep `omitempty` for empty strings, slices, and maps. New code that needs strict decoding uses
+  `encoding/json/v2`. Since Go 1.27, `encoding/json` runs on the v2 engine, so don't
+  assert on its error text.
+- Open files with untrusted names through `os.OpenRoot(dir)`.
+- `crypto/rand` for secrets (`rand.Text()` for tokens), `math/rand/v2` for the rest.
+- **HTTP servers:** set `ReadHeaderTimeout`, shut down with `srv.Shutdown(ctx)`, route with
+  `mux.HandleFunc("GET /items/{id}", h)` and `r.PathValue("id")`, and wrap state-changing
+  browser endpoints in `http.NewCrossOriginProtection()`.
+- **HTTP clients:** set a timeout, build requests with `http.NewRequestWithContext`, and
+  close every response body.
+- Read configuration once in `main` and pass it down.
+- Never use a cleanup or finalizer for work `Close` should do.
 
-## 10. Logging and observability
+## 9. Logging
 
-- Use `log/slog` for operational logs. The message is a constant; variable data goes in
-  attributes: `logger.InfoContext(ctx, "order shipped", "order_id", id)`. `sloglint` keeps
-  attribute style consistent.
-- Pass a `*slog.Logger` to the component that logs, or use `slog.Default()` in an
-  application. Libraries mostly return errors and don't log at all.
-- Never log credentials, tokens, or personal data. Implement `slog.LogValuer` on types
-  that hold secrets so they print redacted.
-- Use `slog.DiscardHandler` in tests and benchmarks that don't inspect logs.
+- `log/slog` with a constant message and data in attributes:
+  `logger.InfoContext(ctx, "order shipped", "order_id", id)`.
+- Libraries mostly return errors and don't log.
+- Never log secrets. Implement `slog.LogValuer` on types that hold them.
+- Tests and benchmarks that don't inspect logs use `slog.New(slog.DiscardHandler)`.
 
-## 11. Tests
+## 10. Tests
 
-- **Test the public behavior.** Prefer `package foo_test` so tests use the API the way
-  callers do. Use internal tests only for logic with no public way in.
-- **Table-driven tests** when cases share one flow. Name each case, run it with `t.Run`,
-  and use `t.Parallel()` when cases are independent. Since Go 1.22, the loop variable is
-  fresh per iteration, so no `tc := tc`.
-- **Failure messages** name the call, the input, what you got, and what you wanted, in
-  that order: `t.Errorf("Parse(%q) = %v, want %v", in, got, want)`. Use `go-cmp`'s
-  `cmp.Diff` for structs; don't add an assertion library.
-- Use `t.Helper()` in helpers, `t.Cleanup` for teardown, `t.Context()` for a context
-  that cancels when the test ends, `t.TempDir()` and `t.Chdir()` for files, and
-  `t.Setenv` for environment variables.
-- **Errors** are checked with `errors.Is` or `errors.AsType`, not by comparing text.
-- **Time and concurrency:** test code that waits on timers, tickers, or `time.Sleep` inside
-  `synctest.Test(t, func(t *testing.T) { ... })`, so it runs on a fake clock and can't
-  flake. Put the bubble inside each subtest, keep real network I/O out of it, and don't
-  call `t.Run` or `t.Parallel` inside it.
-- **HTTP:** test handlers with `httptest.NewRecorder` and clients against
-  `httptest.NewServer`. Don't mock `http.Client`.
-- **Benchmarks** use `for b.Loop() { ... }`, which keeps the compiler from deleting the
-  work and excludes setup from timing. Compare runs with `benchstat`.
-- **Fuzz** parsers and decoders of untrusted input with `func FuzzX(f *testing.F)`.
-- **Examples** (`func ExampleParse()` with an `// Output:` comment) are tests and
-  documentation at once.
-- Real dependencies beat mocks: use a real temporary directory, an in-process server,
-  or a database in a container (`testcontainers-go`) rather than an interface added only
-  for mocking.
+- Prefer `package foo_test`, so tests use the public API.
+- Table-driven tests with named cases and `t.Run`.
+- Failure messages read `Parse(%q) = %v, want %v`. Compare structs with `go-cmp`'s
+  `cmp.Diff`, and add no assertion library.
+- Use `t.TempDir()`, `t.Setenv`, `t.Cleanup`, and `t.Helper()`.
+- Run code that waits on timers inside `synctest.Test`. Keep real network I/O out of the
+  bubble, and don't call `t.Run` or `t.Parallel` inside it.
+- Test handlers with `httptest`, not a mocked `http.Client`. Prefer a real temp directory,
+  in-process server, or `testcontainers-go` database over an interface added for mocking.
+- Benchmarks use `for b.Loop()`. Fuzz parsers of untrusted input.
 
-## 12. Documentation
+## 11. Documentation and layout
 
-- Every exported name has a doc comment that is a full sentence starting with the name:
-  `// Parse reads a config file and reports the first invalid key.`
-- Say what the signature can't: preconditions, which errors callers can match, whether
-  the type is safe for concurrent use, and who owns returned slices and maps.
-- The package comment sits above the `package` clause in one file, usually `doc.go`:
-  `// Package config loads ...`.
-- Doc comments support headings (`# Errors`), lists, and links (`[Client.Do]`,
-  `[io.Reader]`). Use them; `go doc` and pkg.go.dev render them.
-- Mark retired APIs with a `// Deprecated: use X instead.` paragraph. Add
-  `//go:fix inline` to a deprecated function that is a one-line wrapper, so `go fix`
-  rewrites callers for you.
-- Comments explain why, not what. No commented-out code; version control remembers it.
+- Every exported name has a doc comment, a full sentence that starts with the name and
+  says what the signature can't: errors callers can match, concurrency safety, and
+  ownership of returned slices and maps.
+- Mark retired APIs with `// Deprecated:`, and add `//go:fix inline` to a one-line
+  wrapper so `go fix` rewrites callers.
+- Start with one package at the module root. Commands go in `cmd/<name>/`, private
+  packages in `internal/`. Don't create `pkg/` or layer packages such as `services`.
+- No package-level mutable state, and no `init` side effects beyond standard registration.
 
-## 13. Project layout
+## Look up the rest
 
-- Start with one package at the module root. Add packages when a second, separate purpose
-  appears, not to mirror layers (`models`, `services`, `controllers`).
-- Put commands in `cmd/<name>/main.go` when a module has more than one binary.
-- Use `internal/` for packages other modules must not import. It is the only
-  visibility boundary above the package.
-- Don't create `pkg/`. It adds a path segment and says nothing.
-- No package-level mutable state and no `init` side effects beyond registering with the
-  standard library (`image.RegisterFormat`, `sql.Register`). Pass dependencies in.
-
-## 14. Final checklist
-
-- `go fix -diff`, `gofmt -l`, `go vet`, `golangci-lint run`, and `go test -race` are clean.
-- Every error is checked, wrapped with useful context or returned once, and matched with
-  `errors.Is` or `errors.AsType`.
-- Every goroutine has an owner, stops on cancel, and is awaited; context flows from the
-  caller.
-- Interfaces are small and declared where they are used; exported functions return
-  concrete types and the `error` interface.
-- No Boolean parameters, `Get` prefixes, stuttering names, or `util` packages in the API.
-- Output that iterates a map sorts the keys first.
-- The code uses what the `go` line allows: `range` over integers and iterators,
-  `min`/`max`, `slices`, `maps`, `new(expr)`, `wg.Go`, `t.Context()`, `b.Loop()`.
-- Exported names have doc comments; tests cover success, failure, and edge cases.
-
-## References
-
-Read these when you need the reasoning behind a rule or a full checklist.
-
-- `references/effective-go.md` (https://go.dev/doc/effective_go): language idioms, naming,
-  embedding, interfaces, and goroutines.
-- `references/code-review-comments.md` (https://go.dev/wiki/CodeReviewComments): the
-  review checklist the Go team uses.
-- `references/google-go-style.md` (https://google.github.io/styleguide/go/): clarity,
-  package design, errors, tests, and when not to abstract.
-- `references/uber-go-style.md` (https://github.com/uber-go/guide): defensive API design,
-  errors, time, goroutine lifetime, and performance.
-- `references/concurrency-patterns.md`: goroutine lifetime, pipelines, cancellation,
-  worker pools, and shutdown.
-- `references/modern-go.md` (https://go.dev/doc/devel/release): what each release from
-  Go 1.21 to Go 1.27 added, and what `go fix` rewrites.
+- Language idioms, embedding, goroutines → `references/effective-go.md`
+- The Go team's review checklist → `references/code-review-comments.md`
+- Choosing clarity over abstraction, naming, test messages → `references/google-go-style.md`
+- Defensive API design, time, goroutine lifetime, performance → `references/uber-go-style.md`
+- Pipelines, worker pools, cancellation, shutdown → `references/concurrency-patterns.md`
+- What each release from Go 1.21 to 1.27 added, and what `go fix` rewrites → `references/modern-go.md`

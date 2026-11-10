@@ -39,7 +39,8 @@ type SMap struct {
   `maps.Clone` (Go 1.21) in place of the loops and `append([]T(nil), s...)` forms in the guide.
 - Prefer `var s []int` over `s := []int{}`. A nil slice is a valid empty slice. Test with
   `len(s) == 0`, not `s == nil`. Do not return `[]int{}` to mean "none", and note that a nil
-  slice encodes as `null` in JSON while an empty one encodes as `[]`.
+  slice encodes as `null` in `encoding/json` while an empty one encodes as `[]`;
+  `encoding/json/v2` encodes both as `[]`.
 - A nil map reads fine and panics on write. Create maps with `make`. Give `make` a capacity hint
   when you know the size.
 - Specify slice capacity with `make([]T, 0, n)` when `n` is known. It avoids repeated growth.

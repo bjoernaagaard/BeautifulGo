@@ -1,5 +1,5 @@
 // Package beautifullintcheck holds one known violation per linter that
-// scripts/check-lints.sh expects lints/golangci.yml to report.
+// scripts/check-lints.sh expects skills/go-review/assets/golangci.yml to report.
 package beautifullintcheck
 
 import (
@@ -13,7 +13,7 @@ import (
 // ErrMissing is a sentinel used by the errorlint violation.
 var ErrMissing = errors.New("missing")
 
-// Job stores a context, which containedctx reports.
+// Job stores a context, which containedctx reports, and unused reports the field.
 type Job struct {
 	ctx context.Context
 }
@@ -27,7 +27,7 @@ func Ignored() {
 	_ = unchecked()
 }
 
-// BadName returns a capitalized error string, which revive reports.
+// BadName returns a capitalized error string, which staticcheck ST1005 reports.
 func BadName() error {
 	return fmt.Errorf("Bad name.")
 }
@@ -37,7 +37,8 @@ func Compare(err error) bool {
 	return err == ErrMissing
 }
 
-// Fetch has no context and leaks the response body, which noctx and bodyclose report.
+// Fetch has no context and leaks the response body, which noctx and bodyclose report,
+// and gosec G107 reports the variable URL.
 func Fetch(url string) (int, error) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -59,4 +60,12 @@ func Old(v interface{}) interface{} {
 // Quiet has a bare nolint directive, which nolintlint reports.
 func Quiet(r io.Reader) {
 	r.Read(nil) //nolint
+}
+
+// Label takes a Boolean that controls its flow, which revive flag-parameter reports.
+func Label(short bool) string {
+	if short {
+		return "x"
+	}
+	return "extended"
 }

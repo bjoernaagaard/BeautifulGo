@@ -35,7 +35,7 @@ From the module root, run what is available and fold the results into the report
 gofmt -l .
 go vet ./...
 go fix -diff ./...          # modernizations allowed by the go line
-golangci-lint run           # the repo's config, else lints/golangci.yml from this project
+golangci-lint run           # the repo's config, else --config <this skill>/assets/golangci.yml
 go test -race ./...
 govulncheck ./...           # reachable known vulnerabilities in dependencies
 ```
@@ -137,6 +137,6 @@ Rules for each finding:
 
 ## 5. Offer the lint configuration
 
-If the module has no `.golangci.yml`, end the report by suggesting `lints/golangci.yml`
-from this project, and name two or three findings from the review that it would have
+If the module has no `.golangci.yml`, end the report by suggesting the bundled
+`assets/golangci.yml`, and name two or three findings from the review that it would have
 caught, with the linter that catches each.

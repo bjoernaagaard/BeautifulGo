@@ -17,11 +17,15 @@ for skill in skills:
         continue
     front, body = match.groups()
     name = re.search(r"(?m)^name: ([a-z0-9-]+)\s*$", front)
-    description = re.search(r"(?m)^description:\s*(.*)$", front)
+    description = re.search(r"(?ms)^description:[ \t]*(?:[>|][-+]?[ \t]*\n)?(.*?)(?=^\S|\Z)", front)
     if not name or name.group(1) != skill.parent.name:
         errors.append(f"{skill}: name does not match directory")
     if not description or not description.group(1).strip():
         errors.append(f"{skill}: missing description")
+    elif len(" ".join(description.group(1).split())) > 1024:
+        errors.append(f"{skill}: description over 1024 characters")
+    if name and len(name.group(1)) > 64:
+        errors.append(f"{skill}: name over 64 characters")
     if body.count("\n") > 500:
         errors.append(f"{skill}: body exceeds 500 lines")
     for path in re.findall(r"`((?:references|assets)/[^`\s]+)`", body):
