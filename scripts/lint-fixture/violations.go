@@ -1,5 +1,6 @@
 // Package beautifullintcheck holds one known violation per linter that
 // scripts/check-lints.sh expects skills/go-review/assets/golangci.yml to report.
+// more.go and more_test.go hold the rest.
 package beautifullintcheck
 
 import (

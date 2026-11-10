@@ -111,8 +111,9 @@ func writeReport(path string, data []byte) (err error) {
 ## 6. Errors and panics
 
 - **Handle an error once.** Return it with context, or log it and stop, never both.
-- **Add context the caller lacks**, lowercase, without "failed to":
-  `fmt.Errorf("load config %s: %w", path, err)`.
+- **Add context the caller lacks**, lowercase, without "failed to", and skip what the
+  wrapped error already says, such as the path in an `*fs.PathError`:
+  `fmt.Errorf("parse config %s: %w", path, err)`.
 - **`%w` makes the cause part of your API.** Use `%v` when the cause is an internal
   detail you may change.
 - **Match with `errors.Is` and `errors.AsType`**, never by error text or `==` on a

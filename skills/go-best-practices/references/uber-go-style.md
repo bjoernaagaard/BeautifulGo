@@ -83,8 +83,7 @@ func (d *Driver) Trips() []string         { return slices.Clone(d.trips) }
   degrade, or to wrap and return. Logging and returning the same error writes it at every
   level.
 - Use a checked type assertion: `t, ok := i.(string)`. The single-value form panics.
-- Since Go 1.26, use `errors.AsType[*T](err)` in place of the `var target *T` plus
-  `errors.As` form that the guide shows.
+- Match error types with `errors.AsType`, not the guide's `errors.As` target form.
 - Use `errors.Join` (Go 1.20) to return several independent errors.
 - Do not panic in production code. Return errors. Panic only for programmer bugs, such as an
   impossible state. `Must` helpers for constant input at start-up are the usual exception. In
@@ -103,10 +102,10 @@ type ParseError struct {
 func (e *ParseError) Error() string { return fmt.Sprintf("line %d: %v", e.Line, e.Err) }
 func (e *ParseError) Unwrap() error { return e.Err }
 
-func open(name string) (*os.File, error) {
+func openStore(name string) (*os.File, error) {
 	f, err := os.Open(name)
 	if err != nil {
-		return nil, fmt.Errorf("open store %q: %w", name, err)
+		return nil, fmt.Errorf("open store: %w", err) // *fs.PathError already names the file
 	}
 	return f, nil
 }
@@ -165,8 +164,7 @@ func open(name string) (*os.File, error) {
   `t.Run`. Avoid branching inside the loop. If cases need different logic, split the table or
   write separate tests. A table with several conditional fields (`shouldCallX`,
   `expectCallY`) is a sign to split.
-- Since Go 1.22 the loop variable is per iteration, so the guide's parallel-test copy
-  `tt := tt` is no longer needed. Use `t.Parallel()` when cases are independent.
+- Use `t.Parallel()` when cases are independent.
 - Functional options suit a public constructor that has three or more optional arguments
   and is likely to gain more. Define an unexported `options` struct, an `Option`
   interface with an unexported `apply` method, and `WithX` functions. Pass options as a final

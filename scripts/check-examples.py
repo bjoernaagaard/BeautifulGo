@@ -42,6 +42,20 @@ with tempfile.TemporaryDirectory(prefix="beautifulgo-examples-") as temp:
     if unformatted:
         sys.exit("not gofmt-clean: " + ", ".join(f"{owners[Path(f).parent.name]} ({Path(f).parent.name})" for f in unformatted))
     run("go", "run", GOIMPORTS, "-w", ".", cwd=module)
+    # goimports guesses imports for names the block uses, so reject guesses outside the
+    # standard library's current packages and the modules this check requires.
+    allowed = ("golang.org/x/sync/", "github.com/google/go-cmp/")
+    rejected = {"math/rand": "math/rand/v2"}
+    listing = subprocess.run(["go", "list", "-f", '{{.Dir}}|{{join .Imports " "}}', "./..."],
+                             cwd=module, text=True, capture_output=True, check=True).stdout
+    for line in listing.splitlines():
+        directory, _, imports = line.partition("|")
+        name = Path(directory).name
+        for path in imports.split():
+            third_party = "." in path.split("/")[0] and not path.startswith(allowed)
+            if third_party or path in rejected:
+                hint = f"; use {rejected[path]}" if path in rejected else ""
+                sys.exit(f"{owners[name]} ({name}): goimports chose {path}{hint}; import it explicitly")
     run("go", "mod", "tidy", cwd=module)
     result = subprocess.run(["go", "vet", "./..."], cwd=module, text=True, capture_output=True)
     if result.returncode != 0:

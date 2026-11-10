@@ -2,7 +2,7 @@
 
 Source: https://google.github.io/styleguide/go/ (the guide at /guide, the decisions at /decisions, and the best practices at /best-practices)
 
-Google's Go style guide has three parts. The guide states the principles and is both canonical and normative. The decisions page rules on specific questions such as naming, imports, errors, and tests, and it is normative but not canonical. The best practices page gives advice that is neither, but is common at Google. Read this digest when you must choose between clarity and an abstraction, when you name something, or when you design an error, a test failure message, or a package boundary. The pages were written before iterators, `log/slog` guidance, and generic methods, so the notes that start with "In newer Go" say what changed.
+Google's Go style guide has three parts. The guide states the principles and is both canonical and normative. The decisions page rules on specific questions such as naming, imports, errors, and tests, and it is normative but not canonical. The best practices page gives advice that is neither, but is common at Google. Read this digest when you must choose between clarity and an abstraction, when you name something, or when you design an error, a test failure message, or a package boundary. The pages were written before iterators, `log/slog` guidance, and generic methods,. `modern-go.md` lists what each release since the source changed; follow it where the two differ.
 
 ## Principles, in priority order
 
@@ -48,7 +48,7 @@ When two principles conflict, the earlier one wins. The guide also says that the
 - Document which sentinel errors or types a function returns, and say whether they are returned directly or wrapped. Document pointer vs value type when callers match with `errors.As`.
 - Do not use `panic` for normal errors. Reserve it for API misuse that a caller must fix, and for failed initialization of a required value in a `Must` function. Do not call `log.Fatal` outside `main`. A library should return an error.
 - Check program invariants during initialization when failure cannot be repaired, and stop in `main` with a clear message.
-- In newer Go, use `errors.AsType[*T](err)` (Go 1.26) in place of `errors.As` with a target variable, and `errors.Join` to combine several errors.
+- Use `errors.Join` to combine several errors.
 
 ## Functions and declarations
 
@@ -61,7 +61,7 @@ When two principles conflict, the earlier one wins. The guide also says that the
 - Choose pointer receivers when the method changes the receiver, when the type contains a lock or other uncopyable field, when it is large, or when other methods already use one. Do not mix pointer and value receivers on one type. If in doubt, use a pointer.
 - Keep signatures short. When a call needs many optional settings, take an option struct or use variadic functional options, and prefer the struct unless the constructor must stay compatible as options grow. An option struct is a plain value that is easy to read at the call site.
 - Do not take boolean flags that change behavior without a name at the call site. Use a named type or a separate function.
-- Pass `context.Context` as the first parameter named `ctx`. Do not store it in a struct, and do not invent a custom context type. When a function blocks on a context, it should return `ctx.Err()`, and the doc should say so.
+- Pass `context.Context` as the first parameter named `ctx`. Do not store it in a struct (the standard library's `*http.Request` is the one accepted exception), and do not invent a custom context type. When a function blocks on a context, it should return `ctx.Err()`, and the doc should say so.
 - Use named results only when the names document the values or a deferred function sets the result. Use a naked return only in a short function.
 - Prefer a synchronous function. Let callers add concurrency, because a function that returns only after its work is done has a clear lifetime.
 - Shadowing is legal and often risky. Do not shadow a package name or a predeclared identifier, and be careful with `err :=` in an inner scope that hides an outer `err`.
@@ -78,7 +78,6 @@ When two principles conflict, the earlier one wins. The guide also says that the
 - Provide a test double package for a library only if users will need it. Otherwise prefer the real implementation with a fake transport or a real in-process server.
 - Use generics when the same algorithm or container code would otherwise repeat for many types, and write the concrete version first. Do not use generics to get dynamic behavior that an interface already gives, and do not add a type parameter that has one instantiation.
 - Do not add a general purpose API for a single use. A small unexported helper often says more than a generic exported one.
-- In newer Go, Go 1.27 lets a method declare its own type parameters, which removes helper functions that existed only for that reason. Interface methods still cannot have type parameters.
 - Use type aliases only for migration or when moving a type between packages.
 - Copying a struct is safe only if its methods are safe on a copy. A type that holds a `sync.Mutex`, a `bytes.Buffer`, or a slice that aliases the original should be passed by pointer.
 
@@ -88,7 +87,6 @@ When two principles conflict, the earlier one wins. The guide also says that the
 - Declare channel direction in signatures where it is known. Document who closes a channel, and only the sender closes.
 - Go users assume that read only operations are safe for concurrent use and that mutating operations are not. Document concurrency when a type breaks that assumption, e.g. a read that changes internal state, or a type whose writes are safe for concurrent use.
 - Protect shared state with a mutex placed next to the fields it guards, with a comment that names them.
-- In newer Go, Go 1.25 added `sync.WaitGroup.Go` and `testing/synctest`, Go 1.22 made loop variables per iteration, and Go 1.27 added the `goroutineleak` profile. Follow those instead of the older patterns the pages show.
 
 ## Documentation
 
@@ -109,13 +107,10 @@ When two principles conflict, the earlier one wins. The guide also says that the
 - Use table driven tests when many cases share the same logic. Put field names in the table rows, give each case a name, and split a test into several functions when the logic differs. Use `t.Run` when you need isolation or filtering. Subtests are not mandatory.
 - Test the error semantics and not the error text. Check with `errors.Is` or `errors.AsType`, and compare a message only when the message is the contract.
 - Keep setup in the test that needs it. Shared package level setup makes a failure harder to trace.
-- Use `t.Cleanup` for teardown. In newer Go, use `t.Context()` (Go 1.24) for a context that ends with the test, `t.TempDir` and `t.Chdir` for files, `b.Loop()` (Go 1.24) in benchmarks, and `synctest.Test` (Go 1.25) for code that waits on timers.
+- Use `t.Cleanup` for teardown.
 - Design a validation API that other packages call as returning a value or an error that the caller's test can check, and not as a function that takes a `*testing.T`.
 - Do not write a test for a concrete type by first adding an interface to mock it. Test through the public API with a real or fake dependency.
 
 ## Newer Go and the source
 
 - The three pages do not mention iterators. Return `iter.Seq[T]` or `iter.Seq2[K, V]` when callers stream and may stop early, and a slice when callers need the length or a second pass.
-- Use `any` and the `slices`, `maps`, and `cmp` packages in place of `interface{}`, `sort.Slice`, and hand written loops.
-- Go 1.26 `new(expr)` removes the need for helper functions that return a pointer to a literal.
-- For JSON, Go 1.27 moves `encoding/json` onto `encoding/json/v2`. The pages predate that, so check the error text you assert on.

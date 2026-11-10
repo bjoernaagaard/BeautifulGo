@@ -2,7 +2,7 @@
 
 Source: https://go.dev/wiki/CodeReviewComments
 
-Go Code Review Comments is a wiki page where the Go team collects the small mistakes it flags most often in code review. It is a list of checks and not a full style guide, and it is meant to be read next to Effective Go. Read this digest when a review finding needs the original rule, or before you hand back code that you want to pass review. The wiki was written before generics, iterators, and `slog`, so the notes after a section say what newer releases changed.
+Go Code Review Comments is a wiki page where the Go team collects the small mistakes it flags most often in code review. It is a list of checks and not a full style guide, and it is meant to be read next to Effective Go. Read this digest when a review finding needs the original rule, or before you hand back code that you want to pass review. The wiki was written before generics, iterators, and `slog`. `modern-go.md` lists what each release since the source changed; follow it where the two differ.
 
 ## Formatting and comments
 
@@ -43,7 +43,7 @@ Go Code Review Comments is a wiki page where the Go team collects the small mist
 
 Changes since the wiki was written:
 
-- Since Go 1.13, wrap with `fmt.Errorf("...: %w", err)` and match with `errors.Is`. Since Go 1.26, `errors.AsType[*T](err)` returns the typed error and a bool, and it replaces the `var target *T; errors.As(err, &target)` pattern.
+- Since Go 1.13, wrap with `fmt.Errorf("...: %w", err)` and match with `errors.Is`. Match types with `errors.AsType`.
 - Use `errors.Join` (Go 1.20) to combine independent errors.
 
 ## Interfaces
@@ -60,7 +60,7 @@ Changes since the wiki was written:
 - Use the same kind on every method of a type when you can.
 - Do not pass pointers to strings or interface values to save a few bytes. Pass the value. The exception is a large struct or a value that must be changed.
 - If you are unsure, use a pointer receiver.
-- Functions that take a `context.Context` take it as the first parameter, named `ctx`. Do not add a `Context` field to a struct type. Pass it to each method that needs it. The exception is a method whose signature must match an interface in the standard library or in a third party library.
+- Functions that take a `context.Context` take it as the first parameter, named `ctx`. Do not add a `Context` field to a struct type; pass it to each method that needs it. `containedctx` enforces this. The standard library's `*http.Request` is the one accepted exception, kept for compatibility.
 - Do not create custom context types or use interfaces other than `context.Context` in function signatures.
 - Context values are for request-scoped data that crosses process and API boundaries, and not for passing optional parameters.
 - Contexts are immutable, so you can pass the same one to calls that share a deadline, cancellation, or trace data.
@@ -82,24 +82,18 @@ Changes since the wiki was written:
 
 Changes since the wiki was written:
 
-- Since Go 1.22 each iteration has its own loop variable, so a closure started in a loop captures the right value.
-- Since Go 1.25 use `wg.Go(func() { ... })` instead of `wg.Add(1)` plus `go` plus `defer wg.Done()`. Use `errgroup.Group.Go` when the work returns an error.
-- Since Go 1.25, `testing/synctest` runs time dependent goroutine tests on a fake clock.
-- Since Go 1.27, the `goroutineleak` profile in `runtime/pprof` reports goroutines blocked forever.
 
 ## Tests and failure messages
 
 - Failure messages say what was wrong with enough detail to debug without reading the test. The format is `YourFunc(%v) = %v, want %v`, with the call and input first, then the actual value, then the expected value.
 - Use `got` and `want` as names. Print `got` first.
 - Put test helpers in `t.Helper()` calls so failure lines point at the caller.
-- Table tests are fine when cases share the same flow. Since Go 1.22 you do not copy `tc := tc` before `t.Parallel()`.
-- Since Go 1.24, use `t.Context()` for a context that ends when the test finishes and `b.Loop()` for benchmark loops.
+- Table tests are fine when cases share the same flow.
 
 ## Language and API details
 
 - Prefer a struct literal with field names for any literal from another package, because adding a field then does not break callers. Positional literals are fine in a small local test table.
 - Avoid shadowing predeclared names like `len`, `copy`, `new`, `error`, `min`, `max`, and `clear`. The last three became built in at Go 1.21.
-- Since Go 1.26, `new(expr)` removes the need for helper functions that build pointers to literals.
 
 ## Other wiki items
 

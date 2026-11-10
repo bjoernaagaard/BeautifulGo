@@ -30,9 +30,8 @@ skills/
 │       └── golangci.yml      # golangci-lint v2 configuration
 └── go-port/
     └── SKILL.md              # mapping tables per source language, and porting notes
-lints/
-└── check/violations.go       # one known violation per linter, used to test the configuration
 scripts/                      # the checks that CI runs on every pull request
+└── lint-fixture/             # a module with a violation for every enabled linter
 ```
 
 ## How the skills work together
@@ -165,7 +164,8 @@ cp BeautifulGo/skills/go-review/assets/golangci.yml your-module/.golangci.yml
 cd your-module && golangci-lint run
 ```
 
-The configuration enables 33 linters, which fall into these groups:
+The configuration enables 33 linters and the `gofmt` and `goimports` formatters. The
+linters fall into these groups:
 
 - bugs and leaks, e.g. `errcheck`, `bodyclose`, `forcetypeassert`, and `govet` with all
   of its analyzers
@@ -183,13 +183,14 @@ CI runs three checks on every pull request, and you can run the same checks loca
 ```bash
 python3 scripts/check-skill.py      # front matter, links, and referenced files exist
 python3 scripts/check-examples.py   # every Go example in the skills type-checks
-sh scripts/check-lints.sh           # the configuration is valid and each expected linter fires on the fixture
+sh scripts/check-lints.sh           # the configuration is valid and every enabled linter fires on the fixture
 ```
 
-The example check puts each Go code block in its own package. It then adds imports with
-`goimports` and runs `go vet`, so a code example that doesn't compile with Go 1.27 fails
-the build. The lint check runs golangci-lint against `lints/check/violations.go` and fails
-when one of the expected linters reports nothing.
+The example check puts each Go code block in its own package and fails when a block isn't
+`gofmt`-clean. It then adds imports with `goimports`, rejects any import outside the
+standard library and `x/sync` or `go-cmp`, and runs `go vet`, so a code example that
+doesn't compile with Go 1.27 fails the build. The lint check runs golangci-lint against
+`scripts/lint-fixture` and fails when any linter the configuration enables reports nothing.
 
 ```mermaid
 flowchart LR
@@ -197,7 +198,7 @@ flowchart LR
     pr --> examples[check-examples.py]
     pr --> lint[check-lints.sh]
     examples --> vet[goimports, then go vet on Go 1.27]
-    lint --> fixture[golangci-lint on lints/check]
+    lint --> fixture[golangci-lint on scripts/lint-fixture]
 ```
 
 ## Sources

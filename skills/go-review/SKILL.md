@@ -29,16 +29,9 @@ change. The output is a review, not a rewrite. Change code only when the user as
 
 ## 2. Run the tools first
 
-From the module root, run what is available and fold the results into the report:
-
-```bash
-gofmt -l .
-go vet ./...
-go fix -diff ./...          # modernizations allowed by the go line
-golangci-lint run           # the repo's config, else --config <this skill>/assets/golangci.yml
-go test -race ./...
-govulncheck ./...           # reachable known vulnerabilities in dependencies
-```
+From the module root, run the commands in section 1 of `go-best-practices`, including
+`govulncheck`, and fold the results into the report. When the module has no golangci-lint
+config, pass `--config` with this skill's `assets/golangci.yml`.
 
 Don't paste raw tool output. Group repeated warnings into one finding and skip findings
 that don't matter for this code. If a tool can't run (no network, no config, a build
@@ -60,8 +53,9 @@ The first two groups are where real bugs live.
   inside a request path, a context stored in a struct, or a blocking call that ignores
   `ctx.Done()`.
 - Resource leaks: a file, response body, or `sql.Rows` that isn't closed, or is closed
-  only on the happy path; `defer` inside a loop over many items; a ticker that keeps
-  firing after its work is done because nobody calls `Stop`.
+  only on the happy path; `defer` inside a loop over many items; a `time.Ticker` that a
+  long-lived goroutine still holds after its work is done (below Go 1.23, any ticker
+  without `Stop`).
 - Copied locks and atomics (a value receiver on a type with a `sync.Mutex`), and a typed
   nil pointer returned as `error`.
 - Unbounded input: `io.ReadAll` on a request body without `http.MaxBytesReader`, file
@@ -71,7 +65,8 @@ The first two groups are where real bugs live.
 
 - An ignored actionable error, including the error from `Close` on a written file.
 - An error both logged and returned, or returned without the context a caller needs
-  (path, ID, operation).
+  (the operation or an ID), or repeating a detail the wrapped error already has, such as
+  the path in an `*fs.PathError`.
 - `%v` where callers need to match the cause, or `%w` that leaks an internal dependency
   into the API.
 - `err.Error()` compared as text, `==` on an error that may be wrapped, or `errors.As`

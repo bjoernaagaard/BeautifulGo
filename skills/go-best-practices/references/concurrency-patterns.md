@@ -23,8 +23,6 @@ Where a source predates a newer release, the section says what changed.
   the goroutine, and forgetting either one hung or raced. `go fix` rewrites the old form.
 - The function passed to `wg.Go` must not panic. It cannot return an error, so use `errgroup`
   when the work can fail.
-- Since Go 1.22 each loop iteration has its own variable, so a goroutine started in a loop
-  captures the right value. The older `x := x` copy is no longer needed.
 - Never start goroutines in `init` or in a package-level variable. Expose `Start` and `Close`
   or take a context.
 - A goroutine blocked forever on a channel is a leak. Since Go 1.27 the `goroutineleak` profile
@@ -80,8 +78,8 @@ The context post introduced `context.Context` for cancellation, deadlines, and r
 values across API boundaries and goroutines.
 
 - Pass `ctx` as the first parameter, named `ctx`, to every function that blocks, does I/O, or
-  calls something that does. Do not store it in a struct, except in a type that represents one
-  call such as an `*http.Request`.
+  calls something that does. Do not store it in a struct; the standard library's
+  `*http.Request` is the one accepted exception, kept for compatibility.
 - Always call the cancel function from `WithCancel`, `WithTimeout`, and `WithDeadline`, usually
   with `defer cancel()`. Skipping it leaks the timer and the child registration.
 - Cancel flows down to children, never up. A child can have a shorter deadline than its
@@ -92,7 +90,6 @@ values across API boundaries and goroutines.
   as an audit write. It keeps the values and drops the cancellation.
 - Use `context.AfterFunc(ctx, f)` (Go 1.21) to run cleanup when a context ends, instead of a
   goroutine that waits on `ctx.Done()`. The returned `stop` function cancels it.
-- Use `t.Context()` (Go 1.24) in tests for a context that ends just before cleanup runs.
 - Context values carry request-scoped data such as a trace ID, not optional parameters. Key
   them with an unexported type, and expose typed accessor functions.
 

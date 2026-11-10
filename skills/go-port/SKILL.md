@@ -35,7 +35,8 @@ Translate each original test into a Go test before porting the implementation. K
 Go test or one table row per original test, with a name that maps back to it
 (`TestParse/empty_input` for `test_parse_empty_input`), so a reader can check coverage.
 If the original has no tests, write characterization tests from the behavior list.
-Run them and watch them fail before you write the implementation.
+Give each ported function a stub that returns zero values, so the tests compile, then
+run them and watch them fail before you write the implementation.
 
 ## 3. Design the Go API, then implement it
 
@@ -60,6 +61,8 @@ module's `go` line allows (iterators, `min`/`max`, `slices`, `maps`, `errors.AsT
 | `#define` constants and macros | `const`, typed constants, and functions |
 | Global mutable state | A struct the caller creates and owns |
 | `strtol` and friends | `strconv.ParseInt` with an explicit bit size; map its `*NumError` to your error |
+| Signed overflow (undefined in C) | Go wraps signed integers silently; add a check where the original relied on a range |
+| Implicit integer promotion and mixed signed/unsigned arithmetic | Explicit conversions; pick the type the C expression evaluated in, and keep unsigned wraparound with `uint` types |
 
 Don't use `unsafe` or cgo unless the port must call C, and then keep it in one small
 package behind a safe API.
@@ -78,6 +81,8 @@ package behind a safe API.
 | Generators and `yield` | `iter.Seq[T]` |
 | `sorted(..., key=...)` | `slices.SortStableFunc`; Python's sort is stable, `slices.SortFunc` is not |
 | `with` blocks | `defer` right after the acquisition succeeds |
+| `//` and `%` (floor toward negative infinity) | Go's `/` and `%` truncate toward zero; adjust when operands can be negative |
+| `len(s)`, `s[i]` on `str` (code points) | `len` and indexing count bytes; use `utf8.RuneCountInString` and `for i, r := range s`, or `[]rune(s)` |
 
 ### From Java, JavaScript, TypeScript, and Rust
 
@@ -87,7 +92,8 @@ package behind a safe API.
 - JavaScript and TypeScript: `null` and `undefined` become comma-ok or the zero value;
   thrown errors become `error` returns; promises become synchronous functions that take a
   `context.Context`, with goroutines only where the original ran work concurrently;
-  numbers become a sized integer or `float64`, chosen on purpose; union types become an
+  numbers become a sized integer or `float64`, chosen on purpose; `length` and indexes on
+  strings count UTF-16 code units, so convert with `unicode/utf16` where they are observable; union types become an
   interface with a type switch or a struct with a kind field.
 - Rust: `Result` becomes `(T, error)`; `Option` becomes comma-ok; traits become small
   interfaces or generic constraints; enums with data become an interface with one type
@@ -132,15 +138,8 @@ pair does not prove the two behave alike; the ported tests decide that.
 
 ## 6. Verify
 
-Run these, and fix everything before reporting:
-
-```bash
-gofmt -l .
-go vet ./...
-go test ./...
-go test -race ./...        # when the port has goroutines
-golangci-lint run          # when the module has a config
-```
+Run the commands in section 1 of `go-best-practices`, and fix everything before
+reporting.
 
 Every ported test must pass. If the original's tests can still run, run them too and
 compare results on the same inputs.

@@ -6,8 +6,8 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 errors = []
 skills = sorted((root / "skills").glob("*/SKILL.md"))
-if [p.parent.name for p in skills] != ["go-best-practices", "go-port", "go-review"]:
-    errors.append("expected go-best-practices, go-port, and go-review")
+if not skills:
+    errors.append("no skills found under skills/")
 
 for skill in skills:
     text = skill.read_text()

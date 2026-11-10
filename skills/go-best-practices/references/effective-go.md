@@ -2,7 +2,7 @@
 
 Source: https://go.dev/doc/effective_go
 
-Effective Go is the Go team's original tutorial on writing clear, idiomatic Go. The page says it was written in 2009 and has not been updated much since, so it knows nothing about modules, generics, iterators, or `log/slog`. Read this digest when you need the reasoning behind a naming, interface, embedding, or concurrency choice. Each section ends with what newer releases changed, so follow the notes over the original text when they differ.
+Effective Go is the Go team's original tutorial on writing clear, idiomatic Go. The page says it was written in 2009 and has not been updated much since, so it knows nothing about modules, generics, iterators, or `log/slog`. Read this digest when you need the reasoning behind a naming, interface, embedding, or concurrency choice. `modern-go.md` lists what each release since the source changed; follow it where the two differ.
 
 ## Formatting and comments
 
@@ -33,11 +33,6 @@ Effective Go is the Go team's original tutorial on writing clear, idiomatic Go. 
 - Use a type switch (`switch v := x.(type)`) to branch on the dynamic type of an interface value.
 - The comma-ok form `v, ok := x.(T)` avoids a panic when the type is wrong.
 
-Changes since the text was written:
-
-- Since Go 1.22 each loop iteration has its own copy of the loop variable, so closures and goroutines started in a loop see the right value. Delete the old `v := v` line.
-- Since Go 1.22 you can range over an integer with `for i := range n`.
-- Since Go 1.23 you can range over a function. See the iterator section below.
 
 ## Functions
 
@@ -57,7 +52,6 @@ Changes since the text was written:
 - Maps are references too. A lookup of a missing key returns the zero value, so use `v, ok := m[k]` to tell absent from zero. To use a map as a set, use `map[T]bool` or `map[T]struct{}`.
 - `delete(m, k)` is safe when the key is absent.
 - Print with `fmt`. `%v` is the default format, `%+v` adds field names, `%#v` is Go syntax, `%T` is the type, and `%q` quotes a string. Implement `String() string` to control `%v`, and never call `fmt.Sprintf("%s", x)` inside `x.String()`, which recurses forever.
-- The text covers `new(T)` with no initial value. Since Go 1.26 `new` also accepts an expression, so `new(10)` points at an int holding 10, which replaces most `ptr(v)` helper functions.
 
 ## Initialization
 
@@ -121,10 +115,7 @@ func describe(v any) string {
 
 Changes since the text was written:
 
-- Since Go 1.22 the loop variable is per iteration, so `go func() { use(v) }()` in a loop is correct. The text's example that copies `req := req` is no longer needed.
-- Since Go 1.25 `sync.WaitGroup.Go` starts the goroutine and tracks it in one call, and `testing/synctest` tests time dependent goroutines on a fake clock.
 - Use `context.Context` to cancel work. Effective Go predates it, and the rule today is to pass `ctx` as the first parameter and stop every goroutine when it is canceled.
-- Go 1.27 adds a `goroutineleak` profile to `runtime/pprof`, which lists goroutines that can never run again. Use it when goroutine counts only go up.
 - `errgroup` from `golang.org/x/sync/errgroup` joins goroutines and returns the first error.
 
 ## Iterators
@@ -154,7 +145,7 @@ func evens(n int) func(yield func(int) bool) {
 - Define an error type when callers need fields from it. `*os.PathError` carries `Op`, `Path`, and `Err`, and the caller can print the whole thing or inspect the parts.
 - Use `panic` only for unrecoverable states such as a bug. A library should return an error and not panic on bad input.
 - `recover` works only inside a deferred function. A package can use panic and recover internally, and it must convert the panic to an `error` before returning to callers.
-- Since Go 1.13 `fmt.Errorf` with `%w` wraps an error. Match with `errors.Is` and `errors.As`, and since Go 1.26 prefer `errors.AsType[*T](err)`, which returns the typed value and a bool.
+- Since Go 1.13 `fmt.Errorf` with `%w` wraps an error. Match with `errors.Is` and `errors.AsType`.
 
 ```go
 func isPathError(err error) bool {
@@ -167,5 +158,4 @@ func isPathError(err error) bool {
 
 - The text ends with a small web server that uses a channel as a handler. Read it for the idiom of a handler type with a method, and do not copy its package layout.
 - Parts of the document that are out of date and safe to ignore include the `godoc` command and the GOPATH setup. Use modules and `go doc`.
-- Generics arrived in Go 1.18. The text recommends interfaces for polymorphism, and that still holds when an interface with methods fits. Use type parameters when the same algorithm applies to many element types, and since Go 1.27 a method can declare its own type parameters.
-- In Go 1.27 `encoding/json` is implemented on top of `encoding/json/v2`, and new code can import `encoding/json/v2` directly.
+- Generics arrived in Go 1.18. The text recommends interfaces for polymorphism, and that still holds when an interface with methods fits. Use type parameters when the same algorithm applies to many element types.
