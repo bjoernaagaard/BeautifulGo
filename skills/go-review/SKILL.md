@@ -50,12 +50,15 @@ The first two groups are where real bugs live.
 - Goroutine leaks: no owner, no stop signal, or no wait; a send on a channel nobody reads
   after the caller returned; a missing `wg.Wait` or `g.Wait`.
 - Context misuse: a derived context whose `cancel` is never called, `context.Background()`
-  inside a request path, a context stored in a struct, or a blocking call that ignores
-  `ctx.Done()`.
+  inside a request path, a context stored in a struct, a blocking call that ignores
+  `ctx.Done()`, a canceled call recorded as an outcome, or a per-request timeout on an
+  operation that retries or falls back.
 - Resource leaks: a file, response body, or `sql.Rows` that isn't closed, or is closed
   only on the happy path; `defer` inside a loop over many items; a `time.Ticker` that a
   long-lived goroutine still holds after its work is done (below Go 1.23, any ticker
   without `Stop`).
+- Values that must agree, such as a total and its parts, read under separate lock
+  acquisitions.
 - Copied locks and atomics (a value receiver on a type with a `sync.Mutex`), and a typed
   nil pointer returned as `error`.
 - Unbounded input: `io.ReadAll` on a request body without `http.MaxBytesReader`, file
@@ -83,6 +86,10 @@ The first two groups are where real bugs live.
   package, mixed pointer and value receivers, or an exported embedded `sync.Mutex`.
 - Bare integers for durations or IDs, or a returned slice or map that aliases internal
   state.
+- An enum whose zero value appears in output or comparisons without a name, or whose
+  parser rejects a name its `String` method returns.
+- Lookups on one type that mix `ok bool` and `ErrNotFound` for "not found", or a wire
+  body built as `map[string]any`.
 - A third-party type leaking through the exported API when a standard type would do.
 
 **Modern Go** (only what the `go` line allows)

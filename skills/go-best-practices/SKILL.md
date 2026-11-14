@@ -63,8 +63,11 @@ line is a minimum for every importer.
 - Initialisms keep one case: `userID`, `HTTPClient`. Receivers are one or two letters,
   the same on every method.
 - Don't shadow predeclared names (`len`, `new`, `min`, `max`, `clear`) or package names.
-- An enum is a named type with `iota` constants, starting at `iota + 1` when the zero
-  value means "unset", with a `String` method.
+- An enum is a named type with `iota` constants and a `String` method. Start at
+  `iota + 1` when the zero value is never valid. When the zero value is a real state that
+  code stores, prints, or compares, such as "not checked yet", name it
+  (`StatusUnknown Status = iota`) and never compare against a bare `0`. The parser
+  accepts every name that `String` returns.
 
 ## 4. Functions and control flow
 
@@ -135,7 +138,7 @@ func describe(err error) string {
   `*MyError` in an `error` is not `nil`.
 - **Ignore an error only with a comment** that says why it's safe.
 - **No in-band sentinels** such as `-1`, `""`, or `nil, nil` for "not found". Return
-  `ok bool` or an error.
+  `ok bool` or an error, and pick one for all the lookups on a type.
 - **`panic` only for programmer errors**, never for caller input, and never `recover` for
   control flow. `os.Exit` and `log.Fatal` only in `main`, which calls `run() error`.
 
@@ -146,6 +149,11 @@ func describe(err error) string {
   every derived context.
 - **Context values** carry request-scoped data, never optional parameters.
 - **Prefer synchronous APIs** and let the caller add concurrency.
+- **Cancellation is not a result.** When `ctx.Err()` is set, return it. Don't record,
+  cache, or log the canceled call as an outcome such as "down" or "failed".
+- **One deadline per operation.** When one call makes several requests, such as a retry
+  or a fallback, bound it with one `context.WithTimeout`. A server's `WriteTimeout` must
+  cover that whole deadline.
 - **Every goroutine has an owner, a stop signal, and a wait.** Start goroutines with
   `wg.Go`. Use `errgroup` from `golang.org/x/sync` only when you need the first error,
   cancellation of the rest, or `SetLimit`:
@@ -185,7 +193,8 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
 ```
 
 - **Locks:** keep the mutex beside the fields it guards, and never call caller code or
-  block on I/O while holding it.
+  block on I/O while holding it. When a caller needs several values that must agree,
+  such as a total and its parts, return them from one method that holds the lock once.
 - **Channels:** the sender closes, once. Declare direction in signatures. Buffer size is
   zero or one unless you state a reason. Every blocking send or receive also selects on
   `ctx.Done()`.
@@ -199,8 +208,9 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
 - Sort map keys before output, hashing, or golden files.
 - Spans are `time.Duration` and instants are `time.Time`. If a wire format forces a bare
   number, put the unit in the name.
-- **JSON:** use `omitzero` for structs, `time.Time`, and values whose zero value is
-  meaningful, and keep `omitempty` for empty strings, slices, and maps. New code that needs strict decoding uses
+- **JSON:** give every request and response body a struct type, not `map[string]any`.
+  Use `omitzero` for structs, `time.Time`, and values whose zero value is meaningful, and
+  keep `omitempty` for empty strings, slices, and maps. New code that needs strict decoding uses
   `encoding/json/v2`. Since Go 1.27, `encoding/json` runs on the v2 engine, so don't
   assert on its error text.
 - Open files with untrusted names through `os.OpenRoot(dir)`.
