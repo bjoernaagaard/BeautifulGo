@@ -27,6 +27,9 @@ go test -race ./...
 govulncheck ./...       # when dependencies or security-relevant code changed
 ```
 
+- Install [golangci-lint](https://golangci-lint.run/docs/welcome/install/) 2.15 or later, and
+  install govulncheck with `go install golang.org/x/vuln/cmd/govulncheck@latest`. If a tool
+  is missing, say which one and skip it.
 - Fix a finding rather than silencing it. To suppress one line, name the linter and the
   reason: `//nolint:gosec // G404: jitter, not a secret`.
 - Let `go fix ./...` do modernization instead of editing by hand.

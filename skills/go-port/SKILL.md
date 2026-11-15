@@ -130,7 +130,7 @@ for a parser and compare outputs on its corpus rather than millions of random in
 
 ## 5. Optional similarity map
 
-If `jscpd` 5.4 or later is installed, the experimental `jscpd --compare source/ target/`
+If [`jscpd`](https://github.com/kucherenko/jscpd) 5.4 or later is installed, the experimental `jscpd --compare source/ target/`
 (which may need `jscpd --semantic-download` first) pairs functions in the
 original with similar functions in the port, which helps you find code you haven't
 ported yet. Run it with the same paths and options each time, source first. A similar
