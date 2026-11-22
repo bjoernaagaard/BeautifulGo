@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go Review"
+  short_description: "Review Go code for correctness and clarity"
+  default_prompt: "Use $go-review to review Go code for correctness and clarity."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go Port"
+  short_description: "Port existing code to idiomatic Go"
+  default_prompt: "Use $go-port to port existing code to idiomatic Go."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go Best Practices"
+  short_description: "Write clear and idiomatic Go code"
+  default_prompt: "Use $go-best-practices to write clear and idiomatic Go code."
