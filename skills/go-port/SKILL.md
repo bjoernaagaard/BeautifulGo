@@ -34,15 +34,16 @@ and adds Go's verbosity on top. Port the behavior, not the structure.
 Translate each original test into a Go test before porting the implementation. Keep one
 Go test or one table row per original test, with a name that maps back to it
 (`TestParse/empty_input` for `test_parse_empty_input`), so a reader can check coverage.
-If the original has no tests, write characterization tests from the behavior list.
-Give each ported function a stub that returns zero values, so the tests compile, then
-run them and watch them fail before you write the implementation.
+If the original has no tests but runs, compare the port's output with the original's on
+the same inputs instead (section 6).
 
 ## 3. Design the Go API, then implement it
 
 Decide the packages, types, and signatures from the behavior list, not from the
 original's shape. Follow the `go-best-practices` skill for style, and use what the target
 module's `go` line allows (iterators, `min`/`max`, `slices`, `maps`, `errors.AsType`).
+Where a row below differs from `go-best-practices`, the row wins, because the original's
+observable behavior comes first.
 
 ### From C and C++
 
@@ -101,8 +102,9 @@ package behind a safe API.
   have no Go equivalent and disappear.
 - Older Go: `go fix -diff ./...` previews and `go fix ./...` applies the rewrites for
   `interface{}`, `sort.Slice`, `x := x` loop copies, `wg.Add(1)` with `defer wg.Done()`,
-  `errors.As` targets, and pointer helpers. Replace `io/ioutil` (staticcheck SA1019
-  flags it) and `b.N` loops by hand.
+  `errors.As` targets, and pointer helpers. `go fix` also replaces most `io/ioutil`
+  calls; replace `ioutil.Discard`, `ioutil.ReadDir` and `b.N` loops by hand (staticcheck
+  SA1019 flags the import).
 
 ## 4. Keep the port proportionate
 

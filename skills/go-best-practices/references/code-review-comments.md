@@ -80,9 +80,6 @@ Changes since the wiki was written:
 - Prefer synchronous functions, which return results directly or finish callbacks before returning. They keep goroutines inside a call and make the code easier to reason about and test. Callers can add concurrency by calling the function from their own goroutine.
 - Do not copy a value of type `sync.Mutex` or a struct containing one. Use a pointer, and let `go vet` catch copies.
 
-Changes since the wiki was written:
-
-
 ## Tests and failure messages
 
 - Failure messages say what was wrong with enough detail to debug without reading the test. The format is `YourFunc(%v) = %v, want %v`, with the call and input first, then the actual value, then the expected value.

@@ -1,8 +1,7 @@
 # golangci-lint v2 configuration for the rules in skills/go-best-practices.
-# Copy it to the module root as .golangci.yml. Checked against golangci-lint 2.15 and Go 1.27.
-# modernize does not report errors.As targets, context.WithCancel in tests, or b.N loops;
-# run `go fix -diff ./...` for those. staticcheck ST1005 checks error strings, and
-# modernize reports interface{}.
+# Copy it to the module root as .golangci.yml.
+# modernize reports errors.As targets, interface{} and context.WithCancel with defer cancel in tests;
+# no tool rewrites b.N loops or the t.Cleanup(cancel) form. staticcheck ST1005 checks error strings.
 version: "2"
 
 linters:
@@ -51,13 +50,20 @@ linters:
   settings:
     errcheck:
       check-blank: true # forcetypeassert reports unchecked type assertions
+      # a read-side Close, and writes through an io.Writer the way errcheck already exempts
+      # os.Stderr
+      exclude-functions:
+        - (io.ReadCloser).Close
+        - fmt.Fprint(io.Writer)
+        - fmt.Fprintf(io.Writer)
+        - fmt.Fprintln(io.Writer)
     exhaustive:
       default-signifies-exhaustive: true
     govet:
       enable-all: true
       disable:
         - fieldalignment # memory layout, not correctness
-        - shadow # flags the idiomatic `if err := f(); err != nil`
+        - shadow # flags `if err := f(); err != nil` whenever an outer err exists, which is common
     nolintlint:
       require-explanation: true
       require-specific: true

@@ -1,7 +1,7 @@
 # Go concurrency patterns (digest)
 
 Source: https://go.dev/blog/pipelines, https://go.dev/blog/context,
-https://pkg.go.dev/golang.org/x/sync/errgroup, https://go.dev/blog/synctest, and the
+https://pkg.go.dev/golang.org/x/sync/errgroup, https://go.dev/blog/testing-time, and the
 concurrency section of https://go.dev/doc/effective_go. The two blog posts on pipelines and
 context are from 2014 and 2016. Effective Go says "Do not communicate by sharing memory;
 instead, share memory by communicating." Read this digest before you add a goroutine, a
@@ -165,8 +165,7 @@ func TestTimeout(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), time.Hour)
 		defer cancel()
-		time.Sleep(time.Hour)
-		synctest.Wait()
+		synctest.Sleep(time.Hour)
 		if ctx.Err() != context.DeadlineExceeded {
 			t.Fatalf("ctx.Err() = %v, want DeadlineExceeded", ctx.Err())
 		}

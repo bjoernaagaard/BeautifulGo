@@ -1,14 +1,15 @@
 # Modern Go, 1.21 to 1.27 (digest)
 
 Source: https://go.dev/doc/go1.21 through https://go.dev/doc/go1.27 (the release notes), checked
-against the Go 1.27.3 toolchain with `go doc` and `go tool fix help`. Each release adds a few
+with `go doc` and `go tool fix help`. Each release adds a few
 things that change how you write everyday code. Read this when the `go` line in `go.mod`
 moves up, when you review code that looks older than the toolchain, or when you pick between
 a library function and a hand-written loop. Every section lists "use X instead of Y".
 
 ## Using this digest
 
-- The `go` line in `go.mod` decides which features a file may use. `go fix` respects it.
+- The `go` line decides which language features compile, and `go vet` (run by `go test` since
+  Go 1.27) reports library symbols newer than the line. `go fix` respects it.
   Raise the line first, then run `go fix -diff ./...`, read the diff, and apply it.
 - A library declares the oldest release it tests against. An application declares the
   current release.
@@ -56,15 +57,17 @@ a library function and a hand-written loop. Every section lists "use X instead o
 - Use `slices.Sorted(maps.Keys(m))` instead of collecting keys and sorting them by hand.
 - Timers and tickers: an unreferenced `Timer` or `Ticker` is now garbage collected without
   `Stop`, and the channel is unbuffered, so `Reset` and `Stop` never leave a stale value.
-  Delete the drain-the-channel code before `Reset`. This applies when the `go` line is 1.23
-  or higher.
+  Delete the drain-the-channel code before `Reset`. In Go 1.27 this holds for every module;
+  before 1.27 it applied only when the `go` line was 1.23 or higher.
 
 ## Go 1.24
 
-- Generic type aliases are fully supported: `type Set[T comparable] = map[T]struct{}`.
+- Generic type aliases are fully supported since Go 1.24, and a module needs go 1.23 or higher
+  to declare one: `type Set[T comparable] = map[T]struct{}`.
 - Use `testing.T.Context()` (and `B.Context`) instead of `context.WithCancel` plus
   `t.Cleanup(cancel)`. The context is canceled just before cleanup functions run. The
-  `testingcontext` analyzer rewrites it.
+  `testingcontext` analyzer rewrites the `defer cancel()` form only, so edit the
+  `t.Cleanup(cancel)` form by hand.
 - Use `for b.Loop() { ... }` instead of `for i := 0; i < b.N; i++`. Setup before the loop is
   not timed and the compiler keeps the loop body alive.
 - Use `t.Chdir(dir)` instead of `os.Chdir` with manual restore.
@@ -104,7 +107,8 @@ a library function and a hand-written loop. Every section lists "use X instead o
   type safe, allocates less, and fails to compile when `T` is not an error. The
   `errorsastype` analyzer rewrites it.
 - A generic type may refer to itself in its type parameter list, so recursive constraints
-  such as `type Adder[A Adder[A]] interface { Add(A) A }` work.
+  such as `type Adder[A Adder[A]] interface { Add(A) A }` work (Go 1.26 lifted the
+  restriction, and the compiler does not check the go line for it).
 - `go fix` is rewritten as the place for modernizers and the `//go:fix inline` directive.
   Run `go fix -diff ./...` on every upgrade. The old obsolete fixers are removed.
 - Use `testing.T.ArtifactDir()` to write files a test produces (logs, diffs, screenshots)

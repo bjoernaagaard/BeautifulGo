@@ -29,9 +29,9 @@ change. The output is a review, not a rewrite. Change code only when the user as
 
 ## 2. Run the tools first
 
-From the module root, run the commands in section 1 of `go-best-practices`, including
-`govulncheck`, and fold the results into the report. When the module has no golangci-lint
-config, pass `--config` with this skill's `assets/golangci.yml`.
+From the module root, run the commands in section 1 of `go-best-practices`, and fold the
+results into the report. When the module has no golangci-lint config, pass `--config` with
+this skill's `assets/golangci.yml`.
 
 Don't paste raw tool output. Group repeated warnings into one finding and skip findings
 that don't matter for this code. If a tool can't run (no network, no config, a build
@@ -39,7 +39,7 @@ error), say which and why, and review by reading.
 
 ## 3. What to look for, in priority order
 
-The first two groups are where real bugs live.
+The first group is where real bugs live.
 
 **Correctness**
 
@@ -55,8 +55,7 @@ The first two groups are where real bugs live.
   operation that retries or falls back.
 - Resource leaks: a file, response body, or `sql.Rows` that isn't closed, or is closed
   only on the happy path; `defer` inside a loop over many items; a `time.Ticker` that a
-  long-lived goroutine still holds after its work is done (below Go 1.23, any ticker
-  without `Stop`).
+  long-lived goroutine still holds after its work is done.
 - Values that must agree, such as a total and its parts, read under separate lock
   acquisitions.
 - Copied locks and atomics (a value receiver on a type with a `sync.Mutex`), and a typed
@@ -64,51 +63,14 @@ The first two groups are where real bugs live.
 - Unbounded input: `io.ReadAll` on a request body without `http.MaxBytesReader`, file
   paths from users opened without `os.Root`, `math/rand` used for a token.
 
-**Errors**
+**Everything else**
 
-- An ignored actionable error, including the error from `Close` on a written file.
-- An error both logged and returned, or returned without the context a caller needs
-  (the operation or an ID), or repeating a detail the wrapped error already has, such as
-  the path in an `*fs.PathError`.
-- `%v` where callers need to match the cause, or `%w` that leaks an internal dependency
-  into the API.
-- `err.Error()` compared as text, `==` on an error that may be wrapped, or `errors.As`
-  with a target variable where `errors.AsType` reads better.
-- `panic` for caller input, `log.Fatal` or `os.Exit` outside `main`.
-
-**API and design** (strict for libraries)
-
-- An exported function that returns a concrete error type, or an interface where a
-  concrete type would do.
-- An interface declared beside its only implementation, a pointer to an interface, or an
-  interface with many methods and one caller.
-- A Boolean parameter, a `Get` prefix, a stuttering name (`user.UserID`), a `util`
-  package, mixed pointer and value receivers, or an exported embedded `sync.Mutex`.
-- Bare integers for durations or IDs, or a returned slice or map that aliases internal
-  state.
-- An enum whose zero value appears in output or comparisons without a name, or whose
-  parser rejects a name its `String` method returns.
-- Lookups on one type that mix `ok bool` and `ErrNotFound` for "not found", or a wire
-  body built as `map[string]any`.
-- A third-party type leaking through the exported API when a standard type would do.
-
-**Modern Go** (only what the `go` line allows)
-
-- Code that `go fix` would rewrite: `interface{}`, three-clause loops over an integer,
-  `x := x` loop copies, `sort.Slice` on basic types, `wg.Add(1)` with `go` and
-  `defer wg.Done()`, hand-written `min`/`max`, pointer helpers instead of `new(expr)`,
-  `context.WithCancel` in tests instead of `t.Context()`.
-- `for i := 0; i < b.N; i++` instead of `for b.Loop()`, `time.Sleep` in tests instead of
-  `testing/synctest`, a `tools.go` file instead of `tool` lines in `go.mod`, and
-  `golang.org/x/exp` packages that the standard library now provides.
-
-**Tests and documentation**
-
-- Behavior without a test, tests coupled to unexported details, or assertions on error
-  text.
-- Concurrent code without a `-race` run, or time-dependent tests that can flake.
-- Exported names without a doc comment, or a comment that only restates the name.
-- Output whose order depends on map iteration.
+Check each rule in `go-best-practices` whose `check` column in
+`go-best-practices/references/rules.md` says `reader`; the tools in section 2 report the
+rest. Hold a library to the API rules strictly. Report the rewrites `go fix -diff ./...`
+proposes as one Consider finding, and flag what no tool rewrites:
+`for i := 0; i < b.N; i++`, `t.Cleanup(cancel)` in tests, `time.Sleep` in tests, and a
+`tools.go` file.
 
 The `go-best-practices` skill and its `references/` folder hold the full rules and their
 reasoning. Read the relevant reference when a finding needs a rule you're unsure of.
@@ -125,14 +87,15 @@ Use the structure in `assets/review-template.md`.
 
 Rules for each finding:
 
-- Cite a location as `file:line`, or `whole file` when there is no single line.
-- Cite the rule and its source so a reader can look it up: a `go-best-practices`
-  section, a Code Review Comments heading, a Google or Uber style guide section, a
-  `go vet` analyzer, or a linter name such as `errorlint` or `bodyclose`.
+- Cite the line a tool reports. For a reader finding, cite the line of the faulty
+  expression, such as the type assertion or the call whose result leaks, not the line that
+  registers, wraps or returns it; use `whole file` only when no line fits.
+- Cite the rule by its id in `rules.md`, such as `6.error-is`, and the linter or analyzer
+  when a tool reported it.
 - Show the fix as Go code, limited to the lines that change.
 - Group repeats into one finding that lists every location.
-- Respect intent. A deliberate, documented choice goes under Consider with the trade-off,
-  never under Must fix.
+- Respect intent. A deliberate, documented choice that is not a bug goes under Consider
+  with the trade-off, never under Must fix.
 - Keep it proportionate. Five to ten findings is enough for a short file. Don't hide a
   real bug among style notes.
 - The "What is already good" section is required, with two to four specific points.

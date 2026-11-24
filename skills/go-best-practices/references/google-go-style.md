@@ -2,7 +2,7 @@
 
 Source: https://google.github.io/styleguide/go/ (the guide at /guide, the decisions at /decisions, and the best practices at /best-practices)
 
-Google's Go style guide has three parts. The guide states the principles and is both canonical and normative. The decisions page rules on specific questions such as naming, imports, errors, and tests, and it is normative but not canonical. The best practices page gives advice that is neither, but is common at Google. Read this digest when you must choose between clarity and an abstraction, when you name something, or when you design an error, a test failure message, or a package boundary. The pages were written before iterators, `log/slog` guidance, and generic methods,. `modern-go.md` lists what each release since the source changed; follow it where the two differ.
+Google's Go style guide has three parts. The guide states the principles and is both canonical and normative. The decisions page rules on specific questions such as naming, imports, errors, and tests, and it is normative but not canonical. The best practices page gives advice that is neither, but is common at Google. Read this digest when you must choose between clarity and an abstraction, when you name something, or when you design an error, a test failure message, or a package boundary. The pages were written before iterators, `log/slog` guidance, and generic methods. `modern-go.md` lists what each release since the source changed; follow it where the two differ.
 
 ## Principles, in priority order
 
@@ -41,7 +41,7 @@ When two principles conflict, the earlier one wins. The guide also says that the
 - Do not return a concrete error type from an exported function, because a nil pointer stored in an `error` is not nil.
 - Error strings are not capitalized and do not end in punctuation, unless they start with an exported name, a proper noun, or an acronym. A full message shown in a log or a test failure may be capitalized.
 - Handle an error where it appears. Do not ignore one without a comment. A rare ignored error needs a stated reason.
-- Do not add "failed to" to a message when it only repeats that the call failed. Add what the caller does not know, such as the operation name, and skip details the wrapped error already has, such as the file path.
+- Do not add "failed to", "couldn't", or "unable to" to a message when it only repeats that the call failed. Add what the caller does not know, such as the operation name, and skip details the wrapped error already has, such as the file path.
 - Put `%w` at the end of the format string, as in `fmt.Errorf("load settings: %w", err)`, so the message reads from newest context to root cause. A sentinel error is a reasonable exception, because putting it first can show the category.
 - Choose `%w` or `%v` on purpose. `%w` makes the cause part of your API, because callers can match it. Use `%v` at a system boundary, such as an RPC or storage layer, when you do not want to expose the cause.
 - Use sentinel values or types when callers must branch on a condition, and match with `errors.Is` or `errors.As`. Never branch on the error text.
