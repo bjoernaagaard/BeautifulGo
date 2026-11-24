@@ -1,0 +1,66 @@
+[
+  {
+    "prompt": "Write a Go function that reads a CSV file of orders and returns the total per customer, with table tests.",
+    "expected": "go-best-practices"
+  },
+  {
+    "prompt": "My goroutines keep running after the HTTP handler returns. How should I structure context cancellation in this Go worker pool?",
+    "expected": "go-best-practices"
+  },
+  {
+    "prompt": "Add a /healthz endpoint to our Go service in cmd/api/main.go and shut the server down gracefully on SIGTERM.",
+    "expected": "go-best-practices"
+  },
+  {
+    "prompt": "Which go line should a new Go library declare in go.mod, and should it call errors.AsType or errors.As?",
+    "expected": "go-best-practices"
+  },
+  {
+    "prompt": "Review this pull request to our Go payments service and tell me what must change before it merges.",
+    "expected": "go-review"
+  },
+  {
+    "prompt": "Audit internal/cache/lru.go for data races and give me a prioritized list of what to fix.",
+    "expected": "go-review"
+  },
+  {
+    "prompt": "What is wrong with this Go handler? It sometimes answers 200 with an empty body.",
+    "expected": "go-review"
+  },
+  {
+    "prompt": "Grade the Go code under store/ for idiomatic style and list the worst offenders with fixes.",
+    "expected": "go-review"
+  },
+  {
+    "prompt": "Port tools/dedupe.py to Go and keep its output identical.",
+    "expected": "go-port"
+  },
+  {
+    "prompt": "Rewrite our Node.js webhook relay in Go.",
+    "expected": "go-port"
+  },
+  {
+    "prompt": "Translate this C ring buffer into a Go package with the same behavior.",
+    "expected": "go-port"
+  },
+  {
+    "prompt": "Migrate this Go 1.16 code that still uses io/ioutil and interface{} to current Go.",
+    "expected": "go-port"
+  },
+  {
+    "prompt": "Review the error handling in this Rust crate's src/lib.rs and suggest fixes.",
+    "expected": "none"
+  },
+  {
+    "prompt": "List the open GitHub issues labeled bug in this repository.",
+    "expected": "none"
+  },
+  {
+    "prompt": "Refactor this Python module to use dataclasses instead of plain dicts.",
+    "expected": "none"
+  },
+  {
+    "prompt": "Translate this README from English to Danish.",
+    "expected": "none"
+  }
+]

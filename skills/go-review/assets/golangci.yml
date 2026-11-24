@@ -1,8 +1,9 @@
 # golangci-lint v2 configuration for the rules in skills/go-best-practices.
-# Copy it to the module root as .golangci.yml. Checked against golangci-lint 2.15 and Go 1.27.
-# modernize does not report errors.As targets, context.WithCancel in tests, or b.N loops;
-# run `go fix -diff ./...` for those. staticcheck ST1005 checks error strings, and
-# modernize reports interface{}.
+# Copy it to the module root as .golangci.yml.
+# modernize reports errors.As targets, interface{} and context.WithCancel with defer cancel in
+# tests. go fix and modernize leave b.N loops and the t.Cleanup(cancel) form alone; the bloop
+# analyzer in golang.org/x/tools can propose b.Loop, but sits outside the default suite because
+# it can change what a benchmark measures. staticcheck ST1005 checks error strings.
 version: "2"
 
 linters:
@@ -50,6 +51,8 @@ linters:
 
   settings:
     errcheck:
+      # No exclude-functions: a write or Close through an interface can fail. Suppress a
+      # confirmed safe call on its line with //nolint:errcheck and the reason.
       check-blank: true # forcetypeassert reports unchecked type assertions
     exhaustive:
       default-signifies-exhaustive: true
@@ -57,7 +60,7 @@ linters:
       enable-all: true
       disable:
         - fieldalignment # memory layout, not correctness
-        - shadow # flags the idiomatic `if err := f(); err != nil`
+        - shadow # flags `if err := f(); err != nil` when the outer err is used after it
     nolintlint:
       require-explanation: true
       require-specific: true

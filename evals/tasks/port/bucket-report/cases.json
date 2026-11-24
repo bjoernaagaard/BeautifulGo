@@ -1,0 +1,191 @@
+[
+  {
+    "name": "sample",
+    "args": [
+      "10",
+      "6"
+    ],
+    "stdin": "-7\tDeploy\tcafé ünïcode release\n3\tops\tnight shift handover\n-1\tdeploy\trollback\n14\tOPS\tpáger ålert\n-16\tmisc\t\n5\tdeploy\téte check\n",
+    "stdout": "[-20,-10) n=1\n  +4          - - #misc\n[-10,0) n=2\n  +3   café ~ CÜR e #deploy\n  +9   rollb~ R k #deploy\n[0,10) n=2\n  +3   night~ NSH r #ops\n  +5   éte c~ ÉC k #deploy\n[10,20) n=1\n  +4   páger~ PÅ t #ops\ntags:\n  deploy: n=3 mean=-1 span=12\n  ops: n=2 mean=8 span=11\n  misc: n=1 mean=-16 span=0\nbusiest: deploy, ops, misc\n",
+    "exitCode": 0
+  },
+  {
+    "name": "default label width",
+    "args": [
+      "15"
+    ],
+    "stdin": "0\ta\talpha bravo charlie\n29\tb\tshort\n-30\ta\tnégative öffset label\n-1\tc\tx\n",
+    "stdout": "[-30,-15) n=1\n  +0   négativ~ NÖL l #a\n[-15,0) n=1\n  +14  x        X x #c\n[0,15) n=1\n  +0   alpha b~ ABC e #a\n[15,30) n=1\n  +14  short    S t #b\ntags:\n  a: n=2 mean=-15 span=30\n  b: n=1 mean=29 span=0\n  c: n=1 mean=-1 span=0\nbusiest: a, b, c\n",
+    "exitCode": 0
+  },
+  {
+    "name": "negative floor division",
+    "args": [
+      "7",
+      "4"
+    ],
+    "stdin": "-1\tt\tm1\n-7\tt\tm7\n-8\tt\tm8\n-14\tt\tm14\n-15\tt\tm15\n0\tt\tz0\n6\tt\tp6\n7\tt\tp7\n",
+    "stdout": "[-21,-14) n=1\n  +6   m15  M 5 #t\n[-14,-7) n=2\n  +6   m8   M 8 #t\n  +0   m14  M 4 #t\n[-7,0) n=2\n  +6   m1   M 1 #t\n  +0   m7   M 7 #t\n[0,7) n=2\n  +0   z0   Z 0 #t\n  +6   p6   P 6 #t\n[7,14) n=1\n  +0   p7   P 7 #t\ntags:\n  t: n=8 mean=-4 span=22\nbusiest: t\n",
+    "exitCode": 0
+  },
+  {
+    "name": "stable order within a bucket",
+    "args": [
+      "100"
+    ],
+    "stdin": "50\tx\tfirst\n10\ty\tsecond\n99\tx\tthird\n-1\tz\tbefore\n0\ty\tfourth\n",
+    "stdout": "[-100,0) n=1\n  +99  before   B e #z\n[0,100) n=4\n  +50  first    F t #x\n  +10  second   S d #y\n  +99  third    T d #x\n  +0   fourth   F h #y\ntags:\n  x: n=2 mean=74 span=49\n  y: n=2 mean=5 span=10\n  z: n=1 mean=-1 span=0\nbusiest: x, y, z\n",
+    "exitCode": 0
+  },
+  {
+    "name": "busiest ties keep first seen order",
+    "args": [
+      "5"
+    ],
+    "stdin": "1\tgamma\tg\n2\talpha\ta\n3\tbeta\tb\n4\talpha\ta2\n5\tbeta\tb2\n6\tdelta\td\n7\tgamma\tg2\n",
+    "stdout": "[0,5) n=4\n  +1   g        G g #gamma\n  +2   a        A a #alpha\n  +3   b        B b #beta\n  +4   a2       A 2 #alpha\n[5,10) n=3\n  +0   b2       B 2 #beta\n  +1   d        D d #delta\n  +2   g2       G 2 #gamma\ntags:\n  gamma: n=2 mean=4 span=6\n  alpha: n=2 mean=3 span=2\n  beta: n=2 mean=4 span=2\n  delta: n=1 mean=6 span=0\nbusiest: gamma, alpha, beta\n",
+    "exitCode": 0
+  },
+  {
+    "name": "half means round to even",
+    "args": [
+      "10"
+    ],
+    "stdin": "-5\tneg\tn1\n0\tneg\tn2\n0\thalf\th1\n1\thalf\th2\n1\todd\to1\n2\todd\to2\n-3\tnegodd\tq1\n-4\tnegodd\tq2\n",
+    "stdout": "[-10,0) n=3\n  +5   n1       N 1 #neg\n  +7   q1       Q 1 #negodd\n  +6   q2       Q 2 #negodd\n[0,10) n=5\n  +0   n2       N 2 #neg\n  +0   h1       H 1 #half\n  +1   h2       H 2 #half\n  +1   o1       O 1 #odd\n  +2   o2       O 2 #odd\ntags:\n  neg: n=2 mean=-2 span=5\n  half: n=2 mean=0 span=1\n  odd: n=2 mean=2 span=1\n  negodd: n=2 mean=-4 span=1\nbusiest: neg, half, odd\n",
+    "exitCode": 0
+  },
+  {
+    "name": "offsets with spaces and signs",
+    "args": [
+      "4"
+    ],
+    "stdin": " +12 \ts\tpadded\n-3\ts\tminus\n  7\ts\tlead\n",
+    "stdout": "[-4,0) n=1\n  +1   minus    M s #s\n[4,8) n=1\n  +3   lead     L d #s\n[12,16) n=1\n  +0   padded   P d #s\ntags:\n  s: n=3 mean=5 span=15\nbusiest: s\n",
+    "exitCode": 0
+  },
+  {
+    "name": "emoji and combining marks",
+    "args": [
+      "6",
+      "4"
+    ],
+    "stdin": "1\tu\t🚀 launch pad\n2\tu\téclair au chocolat\n3\tu\t日本語のラベル\n4\tu\tab\n",
+    "stdout": "[0,6) n=4\n  +1   🚀 l~ 🚀LP d #u\n  +2   éc~ EAC t #u\n  +3   日本語~ 日 ル #u\n  +4   ab   A b #u\ntags:\n  u: n=4 mean=2 span=3\nbusiest: u\n",
+    "exitCode": 0
+  },
+  {
+    "name": "label exactly the width",
+    "args": [
+      "3",
+      "5"
+    ],
+    "stdin": "0\tw\tabcde\n1\tw\tabcdef\n2\tw\tab\n",
+    "stdout": "[0,3) n=3\n  +0   abcde A e #w\n  +1   abcd~ A f #w\n  +2   ab    A b #w\ntags:\n  w: n=3 mean=1 span=2\nbusiest: w\n",
+    "exitCode": 0
+  },
+  {
+    "name": "tags fold case and spaces",
+    "args": [
+      "10"
+    ],
+    "stdin": "1\t Ops \tone\n2\tOPS\ttwo\n3\tÉTÉ\tthree\n4\tété\tfour\n",
+    "stdout": "[0,10) n=4\n  +1   one      O e #ops\n  +2   two      T o #ops\n  +3   three    T e #été\n  +4   four     F r #été\ntags:\n  ops: n=2 mean=2 span=1\n  été: n=2 mean=4 span=1\nbusiest: ops, été\n",
+    "exitCode": 0
+  },
+  {
+    "name": "width one",
+    "args": [
+      "1",
+      "3"
+    ],
+    "stdin": "-2\ta\tminus two\n0\ta\tzero\n-2\tb\tagain\n",
+    "stdout": "[-2,-1) n=2\n  +0   mi~ MT o #a\n  +0   ag~ A n #b\n[0,1) n=1\n  +0   ze~ Z o #a\ntags:\n  a: n=2 mean=-1 span=2\n  b: n=1 mean=-2 span=0\nbusiest: a, b\n",
+    "exitCode": 0
+  },
+  {
+    "name": "empty input",
+    "args": [
+      "5"
+    ],
+    "stdout": "no events\n",
+    "exitCode": 0
+  },
+  {
+    "name": "blank lines only",
+    "args": [
+      "5"
+    ],
+    "stdin": "\n   \n\t\n",
+    "stdout": "no events\n",
+    "exitCode": 0
+  },
+  {
+    "name": "wrong field count",
+    "args": [
+      "5"
+    ],
+    "stdin": "1\ta\tok\n2\tonly-two\n",
+    "stdout": "",
+    "exitCode": 1
+  },
+  {
+    "name": "bad offset",
+    "args": [
+      "5"
+    ],
+    "stdin": "1\ta\tok\nabc\ta\tbad\n",
+    "stdout": "",
+    "exitCode": 1
+  },
+  {
+    "name": "empty tag",
+    "args": [
+      "5"
+    ],
+    "stdin": "1\t  \tno tag\n",
+    "stdout": "",
+    "exitCode": 1
+  },
+  {
+    "name": "no arguments",
+    "args": [],
+    "stdout": "",
+    "exitCode": 2
+  },
+  {
+    "name": "zero width",
+    "args": [
+      "0"
+    ],
+    "stdout": "",
+    "exitCode": 2
+  },
+  {
+    "name": "label width below two",
+    "args": [
+      "5",
+      "1"
+    ],
+    "stdout": "",
+    "exitCode": 2
+  },
+  {
+    "name": "width not a number",
+    "args": [
+      "five"
+    ],
+    "stdout": "",
+    "exitCode": 2
+  },
+  {
+    "name": "three arguments",
+    "args": [
+      "5",
+      "6",
+      "7"
+    ],
+    "stdout": "",
+    "exitCode": 2
+  }
+]

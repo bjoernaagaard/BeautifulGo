@@ -1,14 +1,20 @@
 # Modern Go, 1.21 to 1.27 (digest)
 
 Source: https://go.dev/doc/go1.21 through https://go.dev/doc/go1.27 (the release notes), checked
-against the Go 1.27.3 toolchain with `go doc` and `go tool fix help`. Each release adds a few
+with `go doc` and `go tool fix help`. Each release adds a few
 things that change how you write everyday code. Read this when the `go` line in `go.mod`
 moves up, when you review code that looks older than the toolchain, or when you pick between
 a library function and a hand-written loop. Every section lists "use X instead of Y".
 
 ## Using this digest
 
-- The `go` line in `go.mod` decides which features a file may use. `go fix` respects it.
+- Each file has an effective language version, which decides the language features that
+  compile in it. It is the module's `go` line, unless a `//go:build go1.N` constraint in the
+  file sets another one. The constraint can raise or lower it, but never below go1.21, so a
+  `go1.20` constraint counts as go1.21. The `stdversion` vet check reports a standard library
+  symbol newer than the effective version, and Go 1.27 added it to the vet subset `go test`
+  runs. It skips generated files and every module whose `go` line is below 1.21, so read
+  those yourself. `go fix` respects the line.
   Raise the line first, then run `go fix -diff ./...`, read the diff, and apply it.
 - A library declares the oldest release it tests against. An application declares the
   current release.
@@ -56,15 +62,21 @@ a library function and a hand-written loop. Every section lists "use X instead o
 - Use `slices.Sorted(maps.Keys(m))` instead of collecting keys and sorting them by hand.
 - Timers and tickers: an unreferenced `Timer` or `Ticker` is now garbage collected without
   `Stop`, and the channel is unbuffered, so `Reset` and `Stop` never leave a stale value.
-  Delete the drain-the-channel code before `Reset`. This applies when the `go` line is 1.23
-  or higher.
+  In Go 1.27 this holds for every module, because Go 1.27 removed the `asynctimerchan`
+  setting. From Go 1.23 to 1.26 the main module's `go` line of 1.23 or higher selected it as
+  a default, and `asynctimerchan=1` turned it off. Delete the drain-the-channel code before
+  `Reset` only when every toolchain that builds the code gives the new behavior.
 
 ## Go 1.24
 
-- Generic type aliases are fully supported: `type Set[T comparable] = map[T]struct{}`.
+- Generic type aliases are fully supported since Go 1.24. The current compiler accepts the
+  declaration `type Set[T comparable] = map[T]struct{}` in a file whose effective language
+  version is go1.23 or higher, set by the module's `go` line or by a `//go:build` constraint.
 - Use `testing.T.Context()` (and `B.Context`) instead of `context.WithCancel` plus
-  `t.Cleanup(cancel)`. The context is canceled just before cleanup functions run. The
-  `testingcontext` analyzer rewrites it.
+  `defer cancel()` or `t.Cleanup(cancel)`. The context is canceled just before cleanup
+  functions run. The `testingcontext` analyzer rewrites the `defer cancel()` form only.
+  Edit the `t.Cleanup(cancel)` form by hand only when no cleanup needs the context alive,
+  because cleanups registered after `cancel` used to see a live context.
 - Use `for b.Loop() { ... }` instead of `for i := 0; i < b.N; i++`. Setup before the loop is
   not timed and the compiler keeps the loop body alive.
 - Use `t.Chdir(dir)` instead of `os.Chdir` with manual restore.
@@ -104,7 +116,8 @@ a library function and a hand-written loop. Every section lists "use X instead o
   type safe, allocates less, and fails to compile when `T` is not an error. The
   `errorsastype` analyzer rewrites it.
 - A generic type may refer to itself in its type parameter list, so recursive constraints
-  such as `type Adder[A Adder[A]] interface { Add(A) A }` work.
+  such as `type Adder[A Adder[A]] interface { Add(A) A }` work (Go 1.26 lifted the
+  restriction, and the compiler does not check the go line for it).
 - `go fix` is rewritten as the place for modernizers and the `//go:fix inline` directive.
   Run `go fix -diff ./...` on every upgrade. The old obsolete fixers are removed.
 - Use `testing.T.ArtifactDir()` to write files a test produces (logs, diffs, screenshots)
@@ -131,7 +144,8 @@ a library function and a hand-written loop. Every section lists "use X instead o
   `/debug/pprof/goroutineleak`) to find goroutines blocked forever on unreachable channels and
   locks. It can miss leaks that hang on a global or a runnable goroutine.
 - `go test` runs the `stdversion` vet check by default, so a file that uses an API newer than
-  its `go` line fails the test run.
+  its effective language version fails the test run. Generated files and modules whose `go`
+  line is below 1.21 are exempt.
 
 ```go
 type List[T any] []T
@@ -152,6 +166,8 @@ func headAndExt(name string) (string, string) {
 
 ## Analyzers in `go fix`
 
-Run `go fix -diff ./...` to preview and `go fix ./...` to apply. All analyzers run by default,
-and the fixes respect the `go` line and build tags. Run `go tool fix help` for the current list,
+Run `go fix -diff ./...` to preview and `go fix ./...` to apply. Every analyzer that
+`go tool fix help` lists runs by default. Some modernizers in `golang.org/x/tools` sit outside
+that suite because their rewrite can change behavior, such as `bloop`, which proposes
+`b.Loop`. The fixes respect the `go` line and build tags. Run `go tool fix help` for the current list,
 and `go tool fix help NAME` for what one analyzer checks or rewrites.

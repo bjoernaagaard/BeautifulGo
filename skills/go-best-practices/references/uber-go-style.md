@@ -206,5 +206,6 @@ type Conn struct {
 - The guide asks teams to run `errcheck`, `goimports`, `revive`, `govet`, and `staticcheck`.
   Run them in CI with `golangci-lint`. Fix the finding instead of silencing it, and keep the
   list short enough that everyone trusts it.
-- Run `go fix -diff ./...` as well. It covers modern replacements for many older forms the
-  guide shows, such as `interface{}` and loop variable copies.
+- Run `go fix -diff ./...` as well. The guide still shows `for i := 0; i < b.N; i++`
+  benchmark loops and `go.uber.org/atomic`; use `for b.Loop()` and the standard typed atomics
+  instead.

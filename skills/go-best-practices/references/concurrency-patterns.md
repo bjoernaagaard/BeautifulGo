@@ -1,7 +1,7 @@
 # Go concurrency patterns (digest)
 
 Source: https://go.dev/blog/pipelines, https://go.dev/blog/context,
-https://pkg.go.dev/golang.org/x/sync/errgroup, https://go.dev/blog/synctest, and the
+https://pkg.go.dev/golang.org/x/sync/errgroup, https://go.dev/blog/testing-time, and the
 concurrency section of https://go.dev/doc/effective_go. The two blog posts on pipelines and
 context are from 2014 and 2016. Effective Go says "Do not communicate by sharing memory;
 instead, share memory by communicating." Read this digest before you add a goroutine, a
@@ -16,8 +16,13 @@ Where a source predates a newer release, the section says what changed.
 
 ## Goroutine lifetime
 
-- Every goroutine has an owner, a way to be told to stop, and a place where its end is awaited.
-  Fire-and-forget goroutines leak and lose errors.
+- Every goroutine has an owner and a way to wait for its end. It also needs either a
+  predictable finish or a stop signal. A job with a predictable finish needs no stop signal,
+  even when it waits briefly, such as on a call with a timeout. Work that can block forever or
+  runs until told to stop needs the stop signal. A fire-and-forget goroutine has no such
+  guarantee, so it risks a leak and loses its error even when it happens to exit.
+- Keep the code simple enough that the lifetime is evident. Document when and why the
+  goroutine ends only when the code cannot make that evident.
 - Start goroutines with `sync.WaitGroup.Go` (Go 1.25) or `errgroup.Group.Go`. Both pair the
   start with the wait. Before 1.25 the pattern was `wg.Add(1)` and `defer wg.Done()` inside
   the goroutine, and forgetting either one hung or raced. `go fix` rewrites the old form.
@@ -30,7 +35,14 @@ Where a source predates a newer release, the section says what changed.
   on channels, locks, or condition variables that nothing can reach any more. It can miss a
   leak when the primitive is reachable from a global or a runnable goroutine.
 
+`runAll` relies on a contract with its caller. Each job has a predictable finish and does
+not panic. A job that can block forever needs a context it watches, and `runAll` would then
+take that context and pass it on. The doc comment states the contract, because the code of
+`runAll` alone cannot show how its jobs end.
+
 ```go
+// runAll runs jobs concurrently and returns when all have finished.
+// Each job must have a predictable finish and must not panic.
 func runAll(jobs []func()) {
 	var wg sync.WaitGroup
 	for _, job := range jobs {
@@ -165,8 +177,7 @@ func TestTimeout(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), time.Hour)
 		defer cancel()
-		time.Sleep(time.Hour)
-		synctest.Wait()
+		synctest.Sleep(time.Hour)
 		if ctx.Err() != context.DeadlineExceeded {
 			t.Fatalf("ctx.Err() = %v, want DeadlineExceeded", ctx.Err())
 		}

@@ -43,7 +43,7 @@ Effective Go is the Go team's original tutorial on writing clear, idiomatic Go. 
 
 ## Data allocation
 
-- `new(T)` returns a pointer to a zeroed `T`. `make` creates only slices, maps, and channels, and it returns an initialized value, not a pointer.
+- `new(T)` returns a pointer to a zeroed `T`. Since Go 1.26 `new(expr)` also accepts a value and returns a pointer to a copy of it. `make` creates only slices, maps, and channels, and it returns an initialized value, not a pointer.
 - Design types so the zero value is ready to use. `sync.Mutex` and `bytes.Buffer` work without setup, and a struct made of such fields keeps that property.
 - A composite literal with field names (`&File{fd: fd, name: name}`) allocates and initializes in one step. Taking the address of a composite literal is fine and common.
 - Arrays are values. Assigning or passing one copies it, so Go code uses slices almost everywhere.

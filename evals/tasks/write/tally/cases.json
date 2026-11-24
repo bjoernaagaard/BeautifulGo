@@ -1,0 +1,138 @@
+[
+  {
+    "name": "mixed input",
+    "args": [],
+    "stdin": "# events\n0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 books 30\n6ba7b810-9dad-11d1-80b4-00c04fd430c8\tbooks\t-5\n\n0F8E2A52-6C1D-4B8E-9A51-3C2D7E9B1A04 games 25\n   # indented comment\nf47ac10b-58cc-4372-a567-0e02b2c3d479  games   -10\n6ba7b810-9dad-11d1-80b4-00c04fd430c8 tools 7\nf47ac10b-58cc-4372-a567-0e02b2c3d479 books 0\n",
+    "stdout": "books count=3 total=25 min=-5 max=30 ids=3\ngames count=2 total=15 min=-10 max=25 ids=2\ntools count=1 total=7 min=7 max=7 ids=1\ndistinct=3\n",
+    "exitCode": 0
+  },
+  {
+    "name": "top two",
+    "args": [
+      "-top",
+      "2"
+    ],
+    "stdin": "0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 a 1\n6ba7b810-9dad-11d1-80b4-00c04fd430c8 b 5\nf47ac10b-58cc-4372-a567-0e02b2c3d479 c 3\n0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 d 4\n",
+    "stdout": "b count=1 total=5 min=5 max=5 ids=1\nd count=1 total=4 min=4 max=4 ids=1\ndistinct=3\n",
+    "exitCode": 0
+  },
+  {
+    "name": "top larger than categories",
+    "args": [
+      "-top",
+      "9"
+    ],
+    "stdin": "0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 a 1\n6ba7b810-9dad-11d1-80b4-00c04fd430c8 b 5\n",
+    "stdout": "b count=1 total=5 min=5 max=5 ids=1\na count=1 total=1 min=1 max=1 ids=1\ndistinct=2\n",
+    "exitCode": 0
+  },
+  {
+    "name": "ties in byte order",
+    "args": [],
+    "stdin": "0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 beta 5\n6ba7b810-9dad-11d1-80b4-00c04fd430c8 Zeta 5\nf47ac10b-58cc-4372-a567-0e02b2c3d479 alpha 5\n0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 _x 5\n",
+    "stdout": "Zeta count=1 total=5 min=5 max=5 ids=1\n_x count=1 total=5 min=5 max=5 ids=1\nalpha count=1 total=5 min=5 max=5 ids=1\nbeta count=1 total=5 min=5 max=5 ids=1\ndistinct=3\n",
+    "exitCode": 0
+  },
+  {
+    "name": "ids differ only in case",
+    "args": [],
+    "stdin": "0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 a 1\n0F8E2A52-6C1D-4B8E-9A51-3C2D7E9B1A04 a 2\n0f8e2a52-6C1D-4B8E-9A51-3C2D7E9B1A04 b 3\n",
+    "stdout": "a count=2 total=3 min=1 max=2 ids=1\nb count=1 total=3 min=3 max=3 ids=1\ndistinct=1\n",
+    "exitCode": 0
+  },
+  {
+    "name": "negative totals",
+    "args": [],
+    "stdin": "0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 refunds -40\n6ba7b810-9dad-11d1-80b4-00c04fd430c8 refunds -2\nf47ac10b-58cc-4372-a567-0e02b2c3d479 sales 0\n",
+    "stdout": "sales count=1 total=0 min=0 max=0 ids=1\nrefunds count=2 total=-42 min=-40 max=-2 ids=2\ndistinct=3\n",
+    "exitCode": 0
+  },
+  {
+    "name": "64 bit amounts",
+    "args": [],
+    "stdin": "0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 big 9223372036854775807\n6ba7b810-9dad-11d1-80b4-00c04fd430c8 small -9223372036854775808\n",
+    "stdout": "big count=1 total=9223372036854775807 min=9223372036854775807 max=9223372036854775807 ids=1\nsmall count=1 total=-9223372036854775808 min=-9223372036854775808 max=-9223372036854775808 ids=1\ndistinct=2\n",
+    "exitCode": 0
+  },
+  {
+    "name": "empty input",
+    "args": [],
+    "stdout": "distinct=0\n",
+    "exitCode": 0
+  },
+  {
+    "name": "only comments",
+    "args": [],
+    "stdin": "# a\n\n  # b\n",
+    "stdout": "distinct=0\n",
+    "exitCode": 0
+  },
+  {
+    "name": "bad id",
+    "args": [],
+    "stdin": "0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 a 1\nnot-a-uuid-at-all-0000000000000000000 a 2\n",
+    "stdout": "",
+    "exitCode": 1
+  },
+  {
+    "name": "id with braces",
+    "args": [],
+    "stdin": "{0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04} a 1\n",
+    "stdout": "",
+    "exitCode": 1
+  },
+  {
+    "name": "id without hyphens",
+    "args": [],
+    "stdin": "0f8e2a526c1d4b8e9a513c2d7e9b1a04 a 1\n",
+    "stdout": "",
+    "exitCode": 1
+  },
+  {
+    "name": "id with a non hex digit",
+    "args": [],
+    "stdin": "0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a0g a 1\n",
+    "stdout": "",
+    "exitCode": 1
+  },
+  {
+    "name": "missing amount",
+    "args": [],
+    "stdin": "0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 a 1\n6ba7b810-9dad-11d1-80b4-00c04fd430c8 b\n",
+    "stdout": "",
+    "exitCode": 1
+  },
+  {
+    "name": "amount too large",
+    "args": [],
+    "stdin": "0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 a 9223372036854775808\n",
+    "stdout": "",
+    "exitCode": 1
+  },
+  {
+    "name": "amount not an integer",
+    "args": [],
+    "stdin": "0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 a 1.5\n",
+    "stdout": "",
+    "exitCode": 1
+  },
+  {
+    "name": "negative top",
+    "args": [
+      "-top",
+      "-1"
+    ],
+    "stdin": "0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 a 1\n",
+    "stdout": "",
+    "exitCode": 2
+  },
+  {
+    "name": "argument",
+    "args": [
+      "extra"
+    ],
+    "stdin": "0f8e2a52-6c1d-4b8e-9a51-3c2d7e9b1a04 a 1\n",
+    "stdout": "",
+    "exitCode": 2
+  }
+]

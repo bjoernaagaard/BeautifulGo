@@ -1,0 +1,93 @@
+[
+  {
+    "file": "status.go",
+    "firstLine": 34,
+    "lastLine": 43,
+    "class": "enum-parser-rejects-string-name",
+    "foundBy": "reader"
+  },
+  {
+    "file": "status.go",
+    "firstLine": 74,
+    "lastLine": 74,
+    "class": "error-compared-with-equals",
+    "foundBy": "golangci-lint errorlint"
+  },
+  {
+    "file": "monitor.go",
+    "firstLine": 68,
+    "lastLine": 76,
+    "class": "typed-nil-returned-as-error",
+    "foundBy": "reader"
+  },
+  {
+    "file": "monitor.go",
+    "firstLine": 81,
+    "lastLine": 86,
+    "class": "goroutine-without-stop-signal",
+    "foundBy": "reader"
+  },
+  {
+    "file": "monitor.go",
+    "firstLine": 91,
+    "lastLine": 91,
+    "class": "data-race-on-unguarded-field",
+    "foundBy": "reader"
+  },
+  {
+    "file": "monitor.go",
+    "firstLine": 104,
+    "lastLine": 108,
+    "class": "cancellation-recorded-as-outcome",
+    "foundBy": "reader"
+  },
+  {
+    "file": "monitor.go",
+    "firstLine": 118,
+    "lastLine": 120,
+    "class": "per-attempt-timeout-on-retried-operation",
+    "foundBy": "reader"
+  },
+  {
+    "file": "monitor.go",
+    "firstLine": 137,
+    "lastLine": 137,
+    "class": "response-body-not-closed",
+    "foundBy": "golangci-lint bodyclose"
+  },
+  {
+    "file": "monitor.go",
+    "firstLine": 148,
+    "lastLine": 148,
+    "class": "returned-map-aliases-guarded-state",
+    "foundBy": "reader"
+  },
+  {
+    "file": "monitor.go",
+    "firstLine": 157,
+    "lastLine": 157,
+    "class": "close-error-ignored-on-written-file",
+    "foundBy": "golangci-lint errcheck"
+  },
+  {
+    "file": "monitor.go",
+    "firstLine": 175,
+    "lastLine": 175,
+    "class": "values-that-must-agree-read-under-separate-locks",
+    "foundBy": "reader"
+  },
+  {
+    "file": "server.go",
+    "firstLine": 41,
+    "lastLine": 41,
+    "class": "unchecked-type-assertion",
+    "foundBy": "golangci-lint forcetypeassert"
+  },
+  {
+    "file": "server.go",
+    "firstLine": 51,
+    "lastLine": 51,
+    "class": "request-body-read-without-limit",
+    "foundBy": "reader"
+  }
+]

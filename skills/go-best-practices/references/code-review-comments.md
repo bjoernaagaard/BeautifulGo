@@ -35,13 +35,13 @@ Go Code Review Comments is a wiki page where the Go team collects the small mist
 ## Errors
 
 - Return the `error` interface type. Do not return a concrete error type from an exported function, because a nil concrete pointer in an `error` interface is not nil.
-- Do not discard errors with `_`. Handle it, return it, or in the rare case where it is safe to ignore, say why in a comment.
+- Do not discard errors with `_`. If a function returns an error, check it to make sure the function succeeded. Handle the error, return it, or, in truly exceptional situations, panic. The wiki gives no exception for an explained discard; that exception comes from the Google guide.
 - Error strings are not capitalized unless they begin with a proper noun or an acronym, and they do not end with punctuation, because they are usually printed after other context.
 - Handle an error first, return, and keep the normal path at the left. Do not put the normal path in an `else` after a returning `if`.
 - Do not `panic` for normal error handling. Use error values and multiple returns.
 - Do not use in-band errors such as `-1`, `""`, or `nil` to mean "not found". Return an extra `error` or `ok bool`, so callers cannot forget to check and cannot mistake a valid value for a failure.
 
-Changes since the wiki was written:
+Go added these after the wiki was written:
 
 - Since Go 1.13, wrap with `fmt.Errorf("...: %w", err)` and match with `errors.Is`. Match types with `errors.AsType`.
 - Use `errors.Join` (Go 1.20) to combine independent errors.
@@ -79,9 +79,6 @@ Changes since the wiki was written:
 - Keep concurrent code simple so that goroutine lifetimes are obvious. Where that is not possible, document when and why the goroutines exit.
 - Prefer synchronous functions, which return results directly or finish callbacks before returning. They keep goroutines inside a call and make the code easier to reason about and test. Callers can add concurrency by calling the function from their own goroutine.
 - Do not copy a value of type `sync.Mutex` or a struct containing one. Use a pointer, and let `go vet` catch copies.
-
-Changes since the wiki was written:
-
 
 ## Tests and failure messages
 

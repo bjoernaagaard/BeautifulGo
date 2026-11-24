@@ -1,0 +1,79 @@
+# The one record of the versions the skills were checked with.
+# scripts/check-versions.py keeps every mention in the repository in step with it,
+# and `python3 scripts/check-versions.py --upstream` reports what has moved upstream.
+
+[go]
+# The newest patch release the skills were checked with. The minor is derived from it.
+release = "1.27.4"
+
+[golangci-lint]
+release = "2.15.0"
+
+# One table per upstream file that a digest reads. `commit` is the last commit touching
+# `path` and `date` is its committer date in UTC. `reference` is a digest or a list of them.
+
+[[source]]
+reference = "skills/go-best-practices/references/google-go-style.md"
+repo = "google/styleguide"
+path = "go"
+commit = "4e404ae582e2c61ab88d5ae137afe96c4835ad38"
+date = "2026-11-06T15:52:18Z"
+
+[[source]]
+reference = "skills/go-best-practices/references/uber-go-style.md"
+repo = "uber-go/guide"
+path = "style.md"
+commit = "37c45b52bf9adf36ccff5db54187cdf4d45e0cc9"
+date = "2026-04-15T15:10:04Z"
+
+[[source]]
+reference = "skills/go-best-practices/references/code-review-comments.md"
+repo = "golang/wiki"
+path = "CodeReviewComments.md"
+commit = "228ca0b711cce543cb476f64d986acf8ff63955a"
+date = "2026-09-01T17:43:41Z"
+
+[[source]]
+reference = [
+  "skills/go-best-practices/references/effective-go.md",
+  "skills/go-best-practices/references/concurrency-patterns.md",
+]
+repo = "golang/website"
+path = "_content/doc/effective_go.html"
+commit = "52749b6d9f44f5c99e9b209ce5399b5da6157e3c"
+date = "2026-04-09T11:56:48Z"
+
+[[source]]
+reference = "skills/go-best-practices/references/modern-go.md"
+repo = "golang/website"
+path = "_content/doc/go1.27.md"
+commit = "586fb19aff820051b52ea98d530670782e2452d4"
+date = "2026-10-02T18:29:58Z"
+
+[[source]]
+reference = "skills/go-best-practices/references/concurrency-patterns.md"
+repo = "golang/website"
+path = "_content/blog/pipelines.md"
+commit = "af871f5d42e869aac0512d7fa773bc3cd7913f4d"
+date = "2026-09-30T19:25:38Z"
+
+[[source]]
+reference = "skills/go-best-practices/references/concurrency-patterns.md"
+repo = "golang/website"
+path = "_content/blog/testing-time.md"
+commit = "af871f5d42e869aac0512d7fa773bc3cd7913f4d"
+date = "2026-09-30T19:25:38Z"
+
+[[source]]
+reference = "skills/go-best-practices/references/concurrency-patterns.md"
+repo = "golang/website"
+path = "_content/blog/context.md"
+commit = "fd82e1351b3c513e750e028ae21710366483b184"
+date = "2026-02-02T20:17:52Z"
+
+[[source]]
+reference = "skills/go-best-practices/references/concurrency-patterns.md"
+repo = "golang/sync"
+path = "errgroup"
+commit = "36f2d70ecde9857dc4e363242a1369c7645d6770"
+date = "2026-09-23T16:28:17Z"

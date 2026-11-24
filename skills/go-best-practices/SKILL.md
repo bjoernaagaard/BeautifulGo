@@ -38,8 +38,8 @@ govulncheck ./...       # when dependencies or security-relevant code changed
 ## 2. Versions and modules
 
 Read the `go` line in `go.mod` before you use a feature below. A new module declares the
-current release (`go 1.27`). A library declares the oldest release it tests, because the
-line is a minimum for every importer.
+current release, as `go mod init` writes it. A library declares the oldest release it
+tests, because the line is a minimum for every importer.
 
 | Since | Use | Instead of |
 |---|---|---|
@@ -102,7 +102,7 @@ func writeReport(path string, data []byte) (err error) {
 
 - **Accept interfaces, return concrete types.**
 - **Declare an interface beside its consumer,** only once a second implementation or a
-  real test double exists. Keep it to one to three methods, and never use a pointer to
+  real test double exists. Keep it small, and never use a pointer to
   an interface. Application code stays concrete, with no dependency-injection framework.
   Libraries follow the API rules strictly.
 - **Receivers:** use pointer receivers when any method needs one, and don't mix kinds on
@@ -118,7 +118,8 @@ func writeReport(path string, data []byte) (err error) {
 
 - **Handle an error once.** Return it with context, or log it and stop, never both.
 - **Add context the caller lacks**, lowercase, without "failed to", and skip what the
-  wrapped error already says, such as the path in an `*fs.PathError`:
+  wrapped error already says, such as the path in an `*fs.PathError` from `os.Open`.
+  A parser that reads bytes, such as `json.Unmarshal`, never saw the path, so add it:
   `fmt.Errorf("parse config %s: %w", path, err)`.
 - **`%w` makes the cause part of your API.** Use `%v` when the cause is an internal
   detail you may change.
@@ -139,7 +140,10 @@ func describe(err error) string {
 
 - **Exported functions return the `error` interface**, never `*MyError`, because a nil
   `*MyError` in an `error` is not `nil`.
-- **Ignore an error only with a comment** that says why it's safe.
+- **Ignore an error only with a reason.** Where errcheck reports the call, write
+  `//nolint:errcheck // why it is safe`, as on the response body in section 7. Where
+  errcheck already exempts it, such as `fmt.Println`, write no directive, because
+  nolintlint reports an unused one.
 - **No in-band sentinels** such as `-1`, `""`, or `nil, nil` for "not found". Return
   `ok bool` or an error, and pick one for all the lookups on a type.
 - **`panic` only for programmer errors**, never for caller input, and never `recover` for
@@ -155,11 +159,11 @@ func describe(err error) string {
 - **Cancellation is not a result.** When `ctx.Err()` is set, return it. Don't record,
   cache, or log the canceled call as an outcome such as "down" or "failed".
 - **One deadline per operation.** When one call makes several requests, such as a retry
-  or a fallback, bound it with one `context.WithTimeout`. A server's `WriteTimeout` must
-  cover that whole deadline.
-- **Every goroutine has an owner, a stop signal, and a wait.** Start goroutines with
-  `wg.Go`. Use `errgroup` from `golang.org/x/sync` only when you need the first error,
-  cancellation of the rest, or `SetLimit`:
+  or a fallback, bound it with one `context.WithTimeout`.
+- **Every goroutine has an owner, a wait, and either a predictable finish or a stop
+  signal.** Document when it ends only when the code does not make that evident. Start
+  goroutines with `wg.Go`. Use `errgroup` from `golang.org/x/sync` only when you need the
+  first error, cancellation of the rest, or `SetLimit`:
 
 ```go
 func fetchAll(ctx context.Context, urls []string) ([][]byte, error) {
@@ -190,7 +194,7 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // the result comes from ReadAll, and a Close error cannot change it
 	return io.ReadAll(resp.Body)
 }
 ```
@@ -243,8 +247,8 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
 - Use `t.TempDir()`, `t.Setenv`, `t.Cleanup`, and `t.Helper()`.
 - Run code that waits on timers inside `synctest.Test`. Keep real network I/O out of the
   bubble, and don't call `t.Run` or `t.Parallel` inside it.
-- Test handlers with `httptest`, not a mocked `http.Client`. Prefer a real temp directory,
-  in-process server, or `testcontainers-go` database over an interface added for mocking.
+- Test handlers with `httptest`, not a mocked `http.Client`. Prefer a real temp directory or
+  in-process server over an interface added for mocking.
 - Benchmarks use `for b.Loop()`. Fuzz parsers of untrusted input.
 
 ## 11. Documentation and layout
@@ -254,9 +258,12 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
   ownership of returned slices and maps.
 - Mark retired APIs with `// Deprecated:`, and add `//go:fix inline` to a one-line
   wrapper so `go fix` rewrites callers.
-- Start with one package at the module root. Commands go in `cmd/<name>/`, private
-  packages in `internal/`. Don't create `pkg/` or layer packages such as `services`.
-- No package-level mutable state, and no `init` side effects beyond standard registration.
+- Start with one package at the module root, which is `package main` for a single
+  command. When a module holds commands beside importable packages, commands go in
+  `cmd/<name>/`. Private packages go in `internal/`. Don't create `pkg/` or layer packages such as `services`.
+- No package-level variable that code reassigns or mutates after start-up, except a
+  private cache behind a lock whose hits and misses callers can't tell apart. No `init`
+  side effects beyond standard registration.
 
 ## Look up the rest
 
@@ -266,3 +273,4 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
 - Defensive API design, time, goroutine lifetime, performance → `references/uber-go-style.md`
 - Pipelines, worker pools, cancellation, shutdown → `references/concurrency-patterns.md`
 - What each release from Go 1.21 to 1.27 added, and what `go fix` rewrites → `references/modern-go.md`
+- Each rule's id, the tool that checks it, and its source → `references/rules.md`

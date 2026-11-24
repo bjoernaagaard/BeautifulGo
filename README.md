@@ -59,14 +59,20 @@ cd your-module && golangci-lint run
 
 ## Check the repository
 
-CI runs three checks on every pull request. The checks need Go 1.27, golangci-lint, and
-Python 3.
+CI runs these checks on every pull request. The checks need Go 1.27, golangci-lint,
+Python 3.11 or later, and network access, because check-examples.py runs go get.
 
 ```bash
 python3 scripts/check-skill.py      # front matter, links, and referenced files
 python3 scripts/check-examples.py   # every Go example is gofmt-clean and passes go vet
 sh scripts/check-lints.sh           # every enabled linter fires on scripts/lint-fixture
+python3 scripts/check-versions.py   # every version agrees with versions.toml
+python3 scripts/check-rules.py      # the rule table is well formed, its ids match scripts/rule-ids.txt, and its tool names exist
 ```
+
+A weekly scheduled run, `.github/workflows/upstream.yml`, compares `versions.toml` with
+the newest Go release, golangci-lint release and upstream guides, and fails naming what
+moved. Run `python3 scripts/check-versions.py --upstream` to see the same report.
 
 ## Sources
 

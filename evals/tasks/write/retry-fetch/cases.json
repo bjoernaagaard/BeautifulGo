@@ -1,0 +1,188 @@
+[
+  {
+    "name": "success",
+    "args": [
+      "{SERVER}/seq/rf-ok/200"
+    ],
+    "stdout": "id=7 name=widget tags=blue,small\n",
+    "exitCode": 0
+  },
+  {
+    "name": "extra members and empty tags",
+    "args": [
+      "{SERVER}/body/gadget"
+    ],
+    "stdout": "id=12 name=gadget tags=\n",
+    "exitCode": 0
+  },
+  {
+    "name": "retries until success",
+    "args": [
+      "-backoff",
+      "50ms",
+      "{SERVER}/seq/rf-flaky/503,500,200"
+    ],
+    "stdout": "id=7 name=widget tags=blue,small\n",
+    "exitCode": 0
+  },
+  {
+    "name": "gives up after three attempts",
+    "args": [
+      "-backoff",
+      "10ms",
+      "{SERVER}/seq/rf-exhaust/503,503,503,200"
+    ],
+    "stdout": "",
+    "exitCode": 5
+  },
+  {
+    "name": "fourth attempt succeeds",
+    "args": [
+      "-attempts",
+      "4",
+      "-backoff",
+      "10ms",
+      "{SERVER}/seq/rf-four/503,503,503,200"
+    ],
+    "stdout": "id=7 name=widget tags=blue,small\n",
+    "exitCode": 0
+  },
+  {
+    "name": "not found is not retried",
+    "args": [
+      "{SERVER}/seq/rf-404/404,200"
+    ],
+    "stdout": "",
+    "exitCode": 3
+  },
+  {
+    "name": "other client error is not retried",
+    "args": [
+      "{SERVER}/seq/rf-409/409,200"
+    ],
+    "stdout": "",
+    "exitCode": 4
+  },
+  {
+    "name": "server error then not found",
+    "args": [
+      "-backoff",
+      "10ms",
+      "{SERVER}/seq/rf-503-404/503,404"
+    ],
+    "stdout": "",
+    "exitCode": 3
+  },
+  {
+    "name": "one attempt allowed",
+    "args": [
+      "-attempts",
+      "1",
+      "{SERVER}/seq/rf-one/500,200"
+    ],
+    "stdout": "",
+    "exitCode": 5
+  },
+  {
+    "name": "truncated body",
+    "args": [
+      "{SERVER}/body/truncated"
+    ],
+    "stdout": "",
+    "exitCode": 7
+  },
+  {
+    "name": "wrong member type",
+    "args": [
+      "{SERVER}/body/wrong-type"
+    ],
+    "stdout": "",
+    "exitCode": 7
+  },
+  {
+    "name": "connection refused",
+    "args": [
+      "-attempts",
+      "2",
+      "-backoff",
+      "10ms",
+      "http://127.0.0.1:1/item"
+    ],
+    "stdout": "",
+    "exitCode": 5
+  },
+  {
+    "name": "slow response passes the deadline",
+    "args": [
+      "-timeout",
+      "300ms",
+      "{SERVER}/seq/rf-slow/200?delay=2000"
+    ],
+    "timeLimit": 1.5,
+    "stdout": "",
+    "exitCode": 6
+  },
+  {
+    "name": "one deadline covers all attempts",
+    "args": [
+      "-attempts",
+      "10",
+      "-backoff",
+      "10ms",
+      "-timeout",
+      "1s",
+      "{SERVER}/seq/rf-slow503/503?delay=400"
+    ],
+    "timeLimit": 2.5,
+    "stdout": "",
+    "exitCode": 6
+  },
+  {
+    "name": "deadline passes during backoff",
+    "args": [
+      "-backoff",
+      "5s",
+      "-timeout",
+      "500ms",
+      "{SERVER}/seq/rf-backoff/503,200"
+    ],
+    "timeLimit": 2,
+    "stdout": "",
+    "exitCode": 6
+  },
+  {
+    "name": "no url",
+    "args": [],
+    "stdout": "",
+    "exitCode": 2
+  },
+  {
+    "name": "attempts below one",
+    "args": [
+      "-attempts",
+      "0",
+      "{SERVER}/seq/rf-zero/200"
+    ],
+    "stdout": "",
+    "exitCode": 2
+  },
+  {
+    "name": "unknown flag",
+    "args": [
+      "-retries",
+      "3",
+      "{SERVER}/seq/rf-flag/200"
+    ],
+    "stdout": "",
+    "exitCode": 2
+  },
+  {
+    "name": "two urls",
+    "args": [
+      "{SERVER}/seq/rf-two-a/200",
+      "{SERVER}/seq/rf-two-b/200"
+    ],
+    "stdout": "",
+    "exitCode": 2
+  }
+]
