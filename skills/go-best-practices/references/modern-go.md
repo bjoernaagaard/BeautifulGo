@@ -8,11 +8,13 @@ a library function and a hand-written loop. Every section lists "use X instead o
 
 ## Using this digest
 
-- The `go` line decides which language features compile. A `//go:build go1.N` tag in a file
-  sets that file's effective version instead, but never below go1.21, so a `go1.20` tag
-  counts as go1.21. The `stdversion` vet check reports a standard library symbol newer than
-  the effective version, and Go 1.27 added it to the vet subset `go test` runs. It skips
-  generated files, so read those yourself. `go fix` respects the line.
+- Each file has an effective language version, which decides the language features that
+  compile in it. It is the module's `go` line, unless a `//go:build go1.N` constraint in the
+  file sets another one. The constraint can raise or lower it, but never below go1.21, so a
+  `go1.20` constraint counts as go1.21. The `stdversion` vet check reports a standard library
+  symbol newer than the effective version, and Go 1.27 added it to the vet subset `go test`
+  runs. It skips generated files and every module whose `go` line is below 1.21, so read
+  those yourself. `go fix` respects the line.
   Raise the line first, then run `go fix -diff ./...`, read the diff, and apply it.
 - A library declares the oldest release it tests against. An application declares the
   current release.
@@ -67,8 +69,9 @@ a library function and a hand-written loop. Every section lists "use X instead o
 
 ## Go 1.24
 
-- Generic type aliases are fully supported since Go 1.24, and a module needs go 1.23 or higher
-  to declare one: `type Set[T comparable] = map[T]struct{}`.
+- Generic type aliases are fully supported since Go 1.24. The current compiler accepts the
+  declaration `type Set[T comparable] = map[T]struct{}` in a file whose effective language
+  version is go1.23 or higher, set by the module's `go` line or by a `//go:build` constraint.
 - Use `testing.T.Context()` (and `B.Context`) instead of `context.WithCancel` plus
   `defer cancel()` or `t.Cleanup(cancel)`. The context is canceled just before cleanup
   functions run. The `testingcontext` analyzer rewrites the `defer cancel()` form only.
@@ -141,7 +144,8 @@ a library function and a hand-written loop. Every section lists "use X instead o
   `/debug/pprof/goroutineleak`) to find goroutines blocked forever on unreachable channels and
   locks. It can miss leaks that hang on a global or a runnable goroutine.
 - `go test` runs the `stdversion` vet check by default, so a file that uses an API newer than
-  its `go` line fails the test run.
+  its effective language version fails the test run. Generated files and modules whose `go`
+  line is below 1.21 are exempt.
 
 ```go
 type List[T any] []T

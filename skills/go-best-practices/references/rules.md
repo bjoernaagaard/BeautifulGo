@@ -5,11 +5,12 @@ One row per rule in `SKILL.md`. The id is the section number and a short name, a
 violation: `lint:` a golangci-lint linter in the go-review configuration, `vet:` a
 `go vet` analyzer, `fix:` a `go fix` analyzer, `compiler` for code that does not
 build, and `reader` for a rule only a reader can check. The source column names the
-guides that state the rule: E Effective Go, W Go Code Review Comments, G the Google
+guides behind the rule: E Effective Go, W Go Code Review Comments, G the Google
 style guide, U the Uber style guide, L the module layout guide at
 https://go.dev/doc/modules/layout, R the release notes or package documentation, and
 ours when every source is silent. Where the guides disagree, the parentheses name
-the side taken.
+the side taken. Where the parentheses say "direct", that guide states the rule, and
+where they say "related", that guide only discusses the topic and does not state it.
 
 A tool in the check column reports only the forms of a violation it detects, with the
 go-review configuration. A row that also says `reader` has forms the tool misses, so a
@@ -29,7 +30,7 @@ check every row by reading.
 | 1.suppress | Explain a line suppression and name the linter | lint:nolintlint | ours |
 | 1.go-fix-modernize | Apply available modernizations with go fix | lint:modernize fix:rangeint reader | ours |
 | 1.race-bug | Treat race reports as bugs | reader | ours |
-| 2.read-version | Read the go line before using a feature | compiler | ours |
+| 2.read-version | Read the go line before using a feature (the tools report some too new uses, never whether the line was read) | compiler vet:stdversion reader | ours |
 | 2.new-module | Declare the current release in a new module | reader | ours |
 | 2.library-minimum | Declare the oldest tested release in a library | reader | ours |
 | 2.min-max | Use min and max for simple comparisons | lint:modernize fix:minmax | R |
@@ -125,7 +126,7 @@ check every row by reading.
 | 6.error-case | Use lowercase error text | lint:staticcheck | W G |
 | 6.error-failed | No "failed to" in error context | reader | G U |
 | 6.error-redundancy | Avoid repeating data the wrapped error already carries | reader | G U |
-| 6.wrap-public | Use `%w` when callers match the cause | lint:errorlint | G U |
+| 6.wrap-public | Use `%w` when callers match the cause (errorlint flags every `%v` of an error and misses `err.Error()`, and cannot tell whether the cause is public) | lint:errorlint reader | G U |
 | 6.hide-private | Use `%v` for a private cause | reader | G U |
 | 6.error-text | Never match errors by message text | reader | G U |
 | 6.error-is | Use `errors.Is` when an error might be wrapped | lint:errorlint | G U |
@@ -143,17 +144,17 @@ check every row by reading.
 | 7.ctx-struct | Do not store context in a struct | lint:containedctx reader | W G (both allow it to match a fixed signature; the skill bans it) |
 | 7.ctx-name | Name the context argument ctx | reader | ours |
 | 7.ctx-propagate | Do not replace a caller context with Background | lint:contextcheck reader | W G (Google admits another root when the caller's is wrong; the skill keeps the normal rule) |
-| 7.cancel-defer | Defer cancel after deriving a context | lint:gosec lint:govet vet:lostcancel | ours |
+| 7.cancel-defer | Defer cancel after deriving a context (the tools report a cancel that some path never calls, not where the call is placed) | lint:gosec lint:govet vet:lostcancel reader | ours |
 | 7.cancel-prompt-defer | Defer cancel at once, not later by hand | reader | ours |
 | 7.ctx-values | Context values only for request scoped data | reader | ours |
 | 7.sync-api | Prefer synchronous APIs and let callers add concurrency | reader | W G |
 | 7.cancel-return | Return `ctx.Err` when the operation was canceled | lint:nilerr reader | ours |
 | 7.cancel-outcome | Cancellation is not a result to record | reader | ours |
 | 7.deadline-once | Put one timeout around retries or fallbacks | reader | ours |
-| 7.goroutine-lifetime | Every goroutine has an owner and a wait | reader | W G U (Uber's exception for work that ends on its own) |
+| 7.goroutine-lifetime | Every goroutine has an owner, a wait, and a predictable finish or a stop signal | reader | U W G (Uber asks for a predictable finish or a stop signal and a way to wait. The wiki and Google ask for documentation only when the code does not make the lifetime evident.) |
 | 7.start-wg | Start owned goroutines with `WaitGroup.Go` when applicable | lint:modernize fix:waitgroupgo | ours |
 | 7.owner-wait | Wait for owned goroutines | reader | U |
-| 7.owner-stop | Stop signal unless the work ends on its own | reader | U |
+| 7.owner-stop | Stop signal unless the work has a predictable finish | reader | U |
 | 7.errgroup-need | errgroup only for first error, cancellation, or limits | reader | ours |
 | 7.mutex-location | Keep the mutex alongside the fields it guards | reader | ours |
 | 7.lock-callback | No caller code while holding a lock | reader | ours |
@@ -161,7 +162,7 @@ check every row by reading.
 | 7.lock-snapshot | Read related values under one acquisition | reader | ours |
 | 7.channel-close | The sender closes a channel, once | reader | ours |
 | 7.channel-direction | Declare channel direction in signatures when possible | reader | G |
-| 7.channel-cap | Use channel capacity zero or one unless justified | reader | E U (Effective Go sizes buffers to the work; Uber's zero or one, larger with a reason) |
+| 7.channel-cap | Use channel capacity zero or one unless justified | reader | U E (U direct, the zero or one default and scrutiny of any other size; E related, it sizes a semaphore buffer to the work) |
 | 7.channel-cancel | Blocking sends and receives select on `ctx.Done` | reader | ours |
 | 7.typed-atomic | Use typed atomics for a lone counter | lint:modernize fix:atomictypes | ours (Uber's atomic module replaced by the standard typed atomics) |
 | 7.once-value | Use `sync.OnceValue` for lazy initialization | reader | ours |
@@ -225,5 +226,5 @@ check every row by reading.
 | 11.internal | Put private packages under internal | reader | L |
 | 11.no-pkg | Do not create a pkg directory | reader | ours |
 | 11.no-layer | Avoid generic layer packages such as services | reader | ours |
-| 11.no-mutable-global | No package variables mutated after startup | reader | E G U (Google's private cache that callers cannot observe is the one exception) |
+| 11.no-mutable-global | No package variables mutated after startup | reader | U G (U direct, it says to avoid mutating globals. G related, in its global state guidance. The rule is a stricter local policy, and its one exception is Google's example of a private cache that callers cannot observe.) |
 | 11.no-init-effects | No init side effects beyond registration | reader | ours (E and U allow more in init; only standard registration kept) |

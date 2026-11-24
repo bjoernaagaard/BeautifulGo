@@ -16,10 +16,13 @@ Where a source predates a newer release, the section says what changed.
 
 ## Goroutine lifetime
 
-- Every goroutine has an owner and a place where its end is awaited. It also needs a way to be
-  told to stop, unless its work ends on its own. Work that can block or run forever needs the
-  stop signal. A fire-and-forget goroutine has no such guarantee, so it risks a leak and loses
-  its error even when it happens to exit.
+- Every goroutine has an owner and a way to wait for its end. It also needs either a
+  predictable finish or a stop signal. A job with a predictable finish needs no stop signal,
+  even when it waits briefly, such as on a call with a timeout. Work that can block forever or
+  runs until told to stop needs the stop signal. A fire-and-forget goroutine has no such
+  guarantee, so it risks a leak and loses its error even when it happens to exit.
+- Keep the code simple enough that the lifetime is evident. Document when and why the
+  goroutine ends only when the code cannot make that evident.
 - Start goroutines with `sync.WaitGroup.Go` (Go 1.25) or `errgroup.Group.Go`. Both pair the
   start with the wait. Before 1.25 the pattern was `wg.Add(1)` and `defer wg.Done()` inside
   the goroutine, and forgetting either one hung or raced. `go fix` rewrites the old form.
@@ -32,13 +35,14 @@ Where a source predates a newer release, the section says what changed.
   on channels, locks, or condition variables that nothing can reach any more. It can miss a
   leak when the primitive is reachable from a global or a runnable goroutine.
 
-`runAll` relies on a contract with its caller: each job finishes on its own and does not
-panic. A job that can block needs a context it watches, and `runAll` would then take that
-context and pass it on.
+`runAll` relies on a contract with its caller. Each job has a predictable finish and does
+not panic. A job that can block forever needs a context it watches, and `runAll` would then
+take that context and pass it on. The doc comment states the contract, because the code of
+`runAll` alone cannot show how its jobs end.
 
 ```go
 // runAll runs jobs concurrently and returns when all have finished.
-// Each job must finish on its own and must not panic.
+// Each job must have a predictable finish and must not panic.
 func runAll(jobs []func()) {
 	var wg sync.WaitGroup
 	for _, job := range jobs {

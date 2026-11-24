@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Check that every version in the repository agrees with versions.toml.
 
-Without arguments it needs no network. It checks each pin below, then scans every text
-file in the repository except versions.toml for a version outside the pins. A Go patch
+Without arguments it needs no network. It checks each pin below, then scans every file in
+the repository whose name ends in .md, .yml, .yaml, .py, .sh, .json, .toml, .txt, .go or
+.mod, except versions.toml and anything under .git, for a version outside the pins. Other
+files, such as go.sum, are not scanned. A Go patch
 version is written 1.N.P or go1.N.P. A golangci-lint version is 2.N.P or v2.N.P anywhere,
 or 2.N on a line that names golangci-lint. Only the matched span of a pin is exempt, so a
 second version on a pinned line still fails.
@@ -10,6 +12,7 @@ second version on a pinned line still fails.
 With --upstream it also asks go.dev and GitHub what has moved since the record was
 written, prints one line per moved item, and exits 1.
 """
+import argparse
 import json
 import re
 import subprocess
@@ -37,7 +40,7 @@ PINS = [
 GO_PATCH = re.compile(r"(?<![\w.])(?:go)?1\.\d+\.\d+(?!\w|\.\d)")
 LINT_VERSION = re.compile(r"(?<![\w.])v?2\.\d+\.\d+(?!\w|\.\d)|golangci-lint\b.*?(?<![\w.])v?2\.\d+(?!\w|\.\d)")
 SKIPPED = {".git", "versions.toml"}
-SUFFIXES = {".md", ".yml", ".yaml", ".py", ".sh", ".json", ".toml", ".txt"}
+SUFFIXES = {".md", ".yml", ".yaml", ".py", ".sh", ".json", ".toml", ".txt", ".go", ".mod"}
 NOT_DIGESTS = {"rules.md"}  # an index of the rules, not a digest of an upstream file
 
 
@@ -82,7 +85,7 @@ def stray_versions(name, text, pinned_spans):
 def scanned_files():
     for path in sorted(root.rglob("*")):
         parts = path.relative_to(root).parts
-        if path.is_file() and not SKIPPED.intersection(parts) and (path.suffix in SUFFIXES or path.name == "go.mod"):
+        if path.is_file() and not SKIPPED.intersection(parts) and path.suffix in SUFFIXES:
             yield path
 
 
@@ -173,12 +176,15 @@ def check_upstream(record):
 
 
 def main(argv):
+    parser = argparse.ArgumentParser(description="Check versions against versions.toml.")
+    parser.add_argument("--upstream", action="store_true", help="also compare the record with go.dev and GitHub")
+    upstream = parser.parse_args(argv).upstream
     record = tomllib.loads((root / "versions.toml").read_text())
-    problems = check_upstream(record) if "--upstream" in argv else check_offline(record)
+    problems = check_upstream(record) if upstream else check_offline(record)
     if problems:
-        print("\n".join(problems), file=sys.stderr if "--upstream" not in argv else sys.stdout)
+        print("\n".join(problems), file=sys.stdout if upstream else sys.stderr)
         return 1
-    print("upstream matches versions.toml" if "--upstream" in argv else "all versions agree with versions.toml")
+    print("upstream matches versions.toml" if upstream else "all versions agree with versions.toml")
     return 0
 
 

@@ -49,8 +49,9 @@ The first group is where real bugs live.
   several goroutines, a map read and written concurrently.
 - Goroutine leaks: a send on a channel nobody reads after the caller returned, or work
   that can block forever with no stop signal. Report a leak only when you can name the
-  blocked operation. A goroutine with no owner, no wait, or no documented promise that its
-  work ends is a missing lifecycle guarantee, so report that as the finding instead.
+  blocked operation. A goroutine with no owner, no way to wait for it, or neither a
+  predictable finish nor a stop signal is a missing lifecycle guarantee, so report that
+  instead. Ask for a comment on when it ends only when the code does not make that evident.
 - Context misuse: a derived context whose `cancel` is never called, `context.Background()`
   inside a request path, a context stored in a struct, a blocking call that ignores
   `ctx.Done()`, a canceled call recorded as an outcome, or a per-request timeout on an
@@ -67,14 +68,15 @@ The first group is where real bugs live.
 
 **Everything else**
 
-Check each rule in `go-best-practices` whose `check` column in
-`go-best-practices/references/rules.md` says `reader`, including rows that also name a
-tool, because the tool reports only some forms. Treat every tool result as evidence, not
-as proof that a rule holds. Even with this skill's configuration, the tools skip test
-files for some linters, skip `cmd` and `internal` for the library rules, and cannot see
-whether a command ran, so read for those cases too. When the tools did not run, check
-every row by reading. Hold a library to the API rules strictly. Report the rewrites `go fix -diff ./...`
-proposes as one Consider finding, and flag what it leaves alone:
+Check by hand every rule in `go-best-practices/references/rules.md` whose scope is wider
+than what the tools report. That is every row whose `check` column says `reader`, even
+when it also names a tool, and every row whose tool is excluded for the code under
+review, such as some linters in test files and the library rules in `cmd` and
+`internal`. A tool cannot judge intent, such as whether the author read the `go` line or
+whether a wrapped cause is part of the public API. A clean tool run is evidence, not
+proof that a rule holds. When the tools did not run, or ran with another configuration,
+check every row by hand. Hold a library to the API rules strictly. Report the rewrites
+`go fix -diff ./...` proposes as one Consider finding, and flag what it leaves alone:
 `for i := 0; i < b.N; i++`, `time.Sleep` in tests, a `tools.go` file, and
 `t.Cleanup(cancel)` in tests when no cleanup needs the context alive.
 

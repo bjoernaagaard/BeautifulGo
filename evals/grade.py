@@ -83,6 +83,7 @@ class ModuleScore:
     total: int = 0
     lint: int = 0
     fix: int = 0
+    linted: bool = True  # False when golangci-lint gave no report, which counts as a build failure
 
 
 # Pure decisions.
@@ -142,12 +143,15 @@ def count_lint_issues(report: str) -> int | None:
         return None
 
 
-def parse_findings(text: str) -> list:
+def parse_findings(text: str) -> tuple[list, str | None]:
+    """Return (findings, problem). A file that is not a JSON list gives no findings and a problem."""
     try:
         findings = json.loads(text)
-    except ValueError:
-        return []
-    return findings if isinstance(findings, list) else []
+    except ValueError as err:
+        return [], f"not valid JSON: {err}"
+    if not isinstance(findings, list):
+        return [], "not a JSON list"
+    return findings, None
 
 
 def same_file(reported: str, expected: str) -> bool:
@@ -158,8 +162,10 @@ def same_file(reported: str, expected: str) -> bool:
 def finding_matches(finding: object, defect: Defect) -> bool:
     if not isinstance(finding, dict):
         return False
-    file, line = finding.get("file"), finding.get("line")
+    file, line, summary = finding.get("file"), finding.get("line"), finding.get("summary")
     if not isinstance(file, str) or not isinstance(line, int) or isinstance(line, bool):
+        return False
+    if not isinstance(summary, str) or not summary.strip():
         return False
     return same_file(file, defect.file) and (
         defect.firstLine - LINE_SLACK <= line <= defect.lastLine + LINE_SLACK
@@ -178,7 +184,7 @@ def summarize(modules: dict[tuple[str, str], ModuleScore], review: list[tuple[in
         return sum(getattr(m, attr) for (k, _), m in modules.items() if k == kind)
 
     return {
-        "buildFailures": sum(1 for m in modules.values() if not m.built),
+        "buildFailures": sum(1 for m in modules.values() if not (m.built and m.linted)),
         "casesPassed": total("write", "passed"),
         "casesTotal": total("write", "total"),
         "lintIssues": sum(m.lint for m in modules.values()),
@@ -307,7 +313,8 @@ def build(module: Path, binary: Path) -> bool:
     return proc is not None and proc.returncode == 0 and binary.is_file()
 
 
-def lint(module: Path, config: Path) -> int:
+def lint(module: Path, config: Path) -> int | None:
+    """Count the issues, or return None when golangci-lint gave no report."""
     proc = subprocess.run(
         ["golangci-lint", "run", "--config", str(config), "--output.json.path=stdout",
          "--show-stats=false", "--max-issues-per-linter=0", "--max-same-issues=0", "./..."],
@@ -316,7 +323,6 @@ def lint(module: Path, config: Path) -> int:
     issues = count_lint_issues(proc.stdout)
     if issues is None:
         print(f"golangci-lint gave no report in {module}: {proc.stderr.strip()}", file=sys.stderr)
-        return 0
     return issues
 
 
@@ -329,10 +335,13 @@ def grade_module(module: Path, cases: list[Case], binary: Path, server: str, con
     if not build(module, binary):
         return ModuleScore(built=False, total=len(cases))
     passed = sum(case_passed(c, run_case([str(binary)], c, server), server) for c in cases)
-    return ModuleScore(True, passed, len(cases), lint(module, config), fix_diff(module))
+    issues = lint(module, config)
+    return ModuleScore(True, passed, len(cases), issues or 0, fix_diff(module), linted=issues is not None)
 
 
-def grade(arm: Path, config: Path) -> dict:
+def grade(arm: Path, config: Path) -> tuple[dict, int]:
+    """Return the scores and the number of problems printed on stderr."""
+    problems = 0
     modules: dict[tuple[str, str], ModuleScore] = {}
     review: list[tuple[int, int, int]] = []
     with serve() as server, tempfile.TemporaryDirectory(prefix="goeval-bin-") as bins:
@@ -341,16 +350,20 @@ def grade(arm: Path, config: Path) -> dict:
                 cases = load_cases(task / "cases.json")
                 score = grade_module(arm / kind / task.name, cases, Path(bins, f"{kind}-{task.name}"), server, config)
                 modules[kind, task.name] = score
-                print(f"{kind}/{task.name}: built={score.built} cases={score.passed}/{score.total} "
-                      f"lint={score.lint} fix={score.fix}")
+                problems += not score.linted
+                print(f"{kind}/{task.name}: built={score.built} linted={score.linted} "
+                      f"cases={score.passed}/{score.total} lint={score.lint} fix={score.fix}")
     for task in task_dirs("review"):
         defects = load_defects(task / "key.json")
         path = arm / "review" / task.name / "findings.json"
-        findings = parse_findings(path.read_text(encoding="utf-8", errors="replace")) if path.is_file() else []
+        findings, problem = parse_findings(path.read_text(encoding="utf-8", errors="replace")) if path.is_file() else ([], None)
+        if problem:
+            problems += 1
+            print(f"{path}: {problem}, so it scores no findings", file=sys.stderr)
         found, false_positives = score_review(findings, defects)
         review.append((found, false_positives, len(defects)))
         print(f"review/{task.name}: found={found}/{len(defects)} falsePositives={false_positives}")
-    return summarize(modules, review)
+    return summarize(modules, review), problems
 
 
 def prepare(arm: Path) -> None:
@@ -381,8 +394,10 @@ def main() -> None:
     missing = [tool for tool in ("go", "golangci-lint") if shutil.which(tool) is None]
     if missing:
         sys.exit(f"missing tools: {', '.join(missing)}")
-    scores = grade(args.arm.resolve(), args.lint_config.resolve())
+    scores, problems = grade(args.arm.resolve(), args.lint_config.resolve())
     print(json.dumps({key: scores[key] for key in SCORE_KEYS}))
+    if problems:
+        sys.exit(f"{problems} grading problems, listed above, make these scores incomplete")
 
 
 if __name__ == "__main__":

@@ -160,10 +160,10 @@ func describe(err error) string {
   cache, or log the canceled call as an outcome such as "down" or "failed".
 - **One deadline per operation.** When one call makes several requests, such as a retry
   or a fallback, bound it with one `context.WithTimeout`.
-- **Every goroutine has an owner and a wait, and a stop signal
-  unless its work ends on its own.** Start goroutines with `wg.Go`. Use `errgroup` from
-  `golang.org/x/sync` only when you need the first error, cancellation of the rest, or
-  `SetLimit`:
+- **Every goroutine has an owner, a wait, and either a predictable finish or a stop
+  signal.** Document when it ends only when the code does not make that evident. Start
+  goroutines with `wg.Go`. Use `errgroup` from `golang.org/x/sync` only when you need the
+  first error, cancellation of the rest, or `SetLimit`:
 
 ```go
 func fetchAll(ctx context.Context, urls []string) ([][]byte, error) {

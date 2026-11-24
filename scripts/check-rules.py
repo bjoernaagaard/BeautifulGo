@@ -3,11 +3,13 @@
 
 Usage: check-rules.py [table.md]   (default skills/go-best-practices/references/rules.md)
 
-Every table row needs an id, a rule, a check and a source. The source starts with guide
-letters from E W G U L R, or with ours, and may add an explanation in parentheses. The ids must equal
-scripts/rule-ids.txt, so adding, removing or renaming a rule takes an edit there too.
-Each lint:, vet: and fix: name must be a linter or analyzer the tool has. This is a name
-check: it does not show that the named tool reports the rule.
+The table starts with the exact header line `| id | rule | check | source |` and the
+separator line `|---|---|---|---|`. Every other table row needs an id, a rule, a check and
+a source. The source starts with guide letters from E W G U L R, or with ours, and may add
+an explanation in parentheses. The ids must equal scripts/rule-ids.txt, so adding,
+removing or renaming a rule takes an edit there too. Each lint:, vet: and fix: name must
+be a linter or analyzer the tool has. The tool names are checked structurally, so a pass
+does not show that the named tool enforces the rule.
 """
 import re
 import subprocess
@@ -19,6 +21,8 @@ skills = root / "skills"
 config = skills / "go-review/assets/golangci.yml"
 inventory = root / "scripts/rule-ids.txt"
 CHECK_FORMS = re.compile(r"(lint|vet|fix):([A-Za-z0-9_]+)|compiler|reader")
+HEADER = "| id | rule | check | source |"
+SEPARATOR = "|---|---|---|---|"
 RULE_ID = re.compile(r"\d+\.[a-z][a-z0-9-]*")
 # The guide letters, or ours, optionally followed by an explanation in parentheses.
 SOURCE = re.compile(r"(?:ours|[EWGULR](?: [EWGULR])*)(?: \(.+\))?")
@@ -26,13 +30,12 @@ SOURCE = re.compile(r"(?:ours|[EWGULR](?: [EWGULR])*)(?: \(.+\))?")
 
 def table_rows(text):
     """Return (rows, errors). A row is (id, check cell); every table line must be well formed."""
+    lines = [(number, line) for number, line in enumerate(text.splitlines(), 1) if line.startswith("|")]
+    if [line.rstrip() for _, line in lines[:2]] != [HEADER, SEPARATOR]:
+        return [], [f"the table must start with the lines {HEADER} and {SEPARATOR}"]
     rows, errors = [], []
-    for number, line in enumerate(text.splitlines(), 1):
-        if not line.startswith("|"):
-            continue
+    for number, line in lines[2:]:
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if cells[0] == "id" or all(set(cell) <= set("-:") for cell in cells):
-            continue
         if len(cells) != 4 or not all(cells):
             errors.append(f"line {number}: a row needs a non-empty id, rule, check and source")
         elif not RULE_ID.fullmatch(cells[0]):
@@ -112,11 +115,13 @@ def main(argv):
         referenced += [(name, ref) for ref in re.findall(r"`(\d+\.[a-z][a-z0-9-]*)`", text)]
     rows, errors = table_rows(table.read_text())
     expected = set(inventory.read_text().split())
-    errors += inventory_errors(rows, expected) + rule_errors(rows, sections, known, referenced)
+    if rows or not errors:  # skip the id checks when the table itself is malformed
+        errors += inventory_errors(rows, expected) + rule_errors(rows, sections, known, referenced)
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1
-    print(f"{len(rows)} rules match scripts/rule-ids.txt, and every tool they name exists")
+    print(f"{len(rows)} rules match scripts/rule-ids.txt, and every tool name they list exists. "
+          "This checks names only, not that a tool enforces its rule.")
     return 0
 
 

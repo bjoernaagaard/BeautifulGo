@@ -43,18 +43,25 @@ requests, and prints one line per task, then one JSON object as its last line:
 
 | Key | Meaning |
 |---|---|
-| `buildFailures` | written and ported modules that are missing or fail `go build -race` |
+| `buildFailures` | written and ported modules that are missing, fail `go build -race`, or give no golangci-lint report |
 | `casesPassed`, `casesTotal` | write task cases with the expected stdout and exit code |
 | `lintIssues` | golangci-lint issues in the written and ported modules, with the given config |
 | `fixDiffLines` | changed lines that `go fix -diff ./...` proposes in those modules |
-| `portPassed`, `portTotal` | port task cases with the same stdout and exit code as the Python |
+| `portPassed`, `portTotal` | port task cases with the expected stdout and exit code |
 | `reviewFound`, `reviewTotal` | seeded defects that some finding in `findings.json` matches |
 | `reviewFalsePositives` | findings that match no seeded defect |
 
-A finding matches a defect when its file is the same and its line is within 3 lines of the
-defect's range. A case passes when the exit code matches and stdout matches exactly, or as
-parsed JSON when the case sets `"stdoutFormat": "json"`. The grader exits 0 whenever it
-printed the JSON object.
+A finding matches a defect when its file is the same, its line is within 3 lines of the
+defect's range, and its `summary` is a non-empty string. A case passes when the exit code
+matches and stdout matches exactly, or as parsed JSON when the case sets
+`"stdoutFormat": "json"`. The port cases compare the Go program with fixed expected
+outputs in `cases.json`, which were produced by running the Python source on each case.
+Grading never runs the Python.
+
+The grader prints a problem on stderr and exits 1, after the JSON object, when a
+`findings.json` is not a JSON list or golangci-lint gives no report for a module. Such a
+findings file scores no findings. A missing `findings.json` scores no findings without a
+problem. Otherwise the grader exits 0.
 
 `triggers.json` is input for a harness that records which skill an agent loads for each
 request. `grade.py` does not read it.

@@ -83,7 +83,7 @@ When two principles conflict, the earlier one wins. The guide also says that the
 
 ## Concurrency
 
-- Make goroutine lifetimes obvious. State when and how each goroutine exits, and wait for it. A goroutine blocked on a channel is never freed by the garbage collector.
+- Make goroutine lifetimes obvious, and wait for each goroutine. Document when and why it exits only when the code cannot make that obvious. A goroutine blocked on a channel is never freed by the garbage collector.
 - Declare channel direction in signatures where it is known. Document who closes a channel, and only the sender closes.
 - Go users assume that read only operations are safe for concurrent use and that mutating operations are not. Document concurrency when a type breaks that assumption, e.g. a read that changes internal state, or a type whose writes are safe for concurrent use.
 - Protect shared state with a mutex placed next to the fields it guards, with a comment that names them.
