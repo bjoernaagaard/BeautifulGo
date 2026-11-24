@@ -47,8 +47,9 @@ The first group is where real bugs live.
   or slice without a length check, a nil pointer from a function that returns `nil, nil`.
 - A data race: shared state written without a lock, a loop that appends to a slice from
   several goroutines, a map read and written concurrently.
-- Goroutine leaks: no owner, no stop signal, or no wait; a send on a channel nobody reads
-  after the caller returned; a missing `wg.Wait` or `g.Wait`.
+- Goroutine leaks: no owner or no wait; no stop signal on work that can block or run
+  forever, while finite work that ends on its own needs none; a send on a channel nobody
+  reads after the caller returned; a missing `wg.Wait` or `g.Wait`.
 - Context misuse: a derived context whose `cancel` is never called, `context.Background()`
   inside a request path, a context stored in a struct, a blocking call that ignores
   `ctx.Done()`, a canceled call recorded as an outcome, or a per-request timeout on an
@@ -66,11 +67,13 @@ The first group is where real bugs live.
 **Everything else**
 
 Check each rule in `go-best-practices` whose `check` column in
-`go-best-practices/references/rules.md` says `reader`; the tools in section 2 report the
-rest. Hold a library to the API rules strictly. Report the rewrites `go fix -diff ./...`
-proposes as one Consider finding, and flag what no tool rewrites:
-`for i := 0; i < b.N; i++`, `t.Cleanup(cancel)` in tests, `time.Sleep` in tests, and a
-`tools.go` file.
+`go-best-practices/references/rules.md` says `reader`, including rows that also name a
+tool, because the tool reports only some forms. The tools in section 2 report the rest
+only when they ran with this skill's configuration; otherwise check those rows by reading
+too. Hold a library to the API rules strictly. Report the rewrites `go fix -diff ./...`
+proposes as one Consider finding, and flag what it leaves alone:
+`for i := 0; i < b.N; i++`, `time.Sleep` in tests, a `tools.go` file, and
+`t.Cleanup(cancel)` in tests when no cleanup needs the context alive.
 
 The `go-best-practices` skill and its `references/` folder hold the full rules and their
 reasoning. Read the relevant reference when a finding needs a rule you're unsure of.
@@ -91,7 +94,8 @@ Rules for each finding:
   expression, such as the type assertion or the call whose result leaks, not the line that
   registers, wraps or returns it; use `whole file` only when no line fits.
 - Cite the rule by its id in `rules.md`, such as `6.error-is`, and the linter or analyzer
-  when a tool reported it.
+  when a tool reported it. When no row fits, such as for an unchecked type assertion, cite
+  the linter or the Go rule directly, such as `forcetypeassert`.
 - Show the fix as Go code, limited to the lines that change.
 - Group repeats into one finding that lists every location.
 - Respect intent. A deliberate, documented choice that is not a bug goes under Consider

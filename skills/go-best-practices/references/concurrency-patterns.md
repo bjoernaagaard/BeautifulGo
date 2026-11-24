@@ -16,8 +16,10 @@ Where a source predates a newer release, the section says what changed.
 
 ## Goroutine lifetime
 
-- Every goroutine has an owner, a way to be told to stop, and a place where its end is awaited.
-  Fire-and-forget goroutines leak and lose errors.
+- Every goroutine has an owner and a place where its end is awaited. It also needs a way to be
+  told to stop, unless its work ends on its own, as with the finite jobs in `runAll` below.
+  Work that can block or run forever needs the stop signal. Fire-and-forget goroutines leak and
+  lose errors.
 - Start goroutines with `sync.WaitGroup.Go` (Go 1.25) or `errgroup.Group.Go`. Both pair the
   start with the wait. Before 1.25 the pattern was `wg.Add(1)` and `defer wg.Done()` inside
   the goroutine, and forgetting either one hung or raced. `go fix` rewrites the old form.

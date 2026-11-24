@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """Check that every version in the repository agrees with versions.toml.
 
-Without arguments it needs no network. With --upstream it also asks go.dev and GitHub
-what has moved since the record was written, prints one line per moved item, and exits 1.
+Without arguments it needs no network. It checks each pin below, then scans every text
+file in the repository except versions.toml for a version outside the pins. A Go patch
+version is written 1.N.P or go1.N.P. A golangci-lint version is 2.N.P or v2.N.P anywhere,
+or 2.N on a line that names golangci-lint. Only the matched span of a pin is exempt, so a
+second version on a pinned line still fails.
+
+With --upstream it also asks go.dev and GitHub what has moved since the record was
+written, prints one line per moved item, and exits 1.
 """
 import json
 import re
@@ -26,10 +32,10 @@ PINS = [
     ("scripts/check-examples.py", r"go (\d+\.\d+)\\n", "go_minor"),
     ("scripts/lint-fixture/go.mod", r"(?m)^go (\d+\.\d+)$", "go_minor"),
 ]
-GO_PATCH = re.compile(r"\b1\.\d+\.\d+\b")
-LINT_VERSION = re.compile(r"golangci.*\bv?2\.\d+\.\d+\b|\bv2\.\d+\.\d+\b")
-SCANNED = ("README.md", "skills", "scripts", ".github")
-SUFFIXES = {".md", ".yml", ".py", ".sh"}
+GO_PATCH = re.compile(r"(?<![\w.])(?:go)?1\.\d+\.\d+(?![\w.])")
+LINT_VERSION = re.compile(r"(?<![\w.])v?2\.\d+\.\d+(?![\w.])|golangci-lint\b.*?(?<![\w.])v?2\.\d+(?![\w])")
+SKIPPED = {".git", "versions.toml"}
+SUFFIXES = {".md", ".yml", ".yaml", ".py", ".sh", ".json", ".toml", ".txt"}
 NOT_DIGESTS = {"rules.md"}  # an index of the rules, not a digest of an upstream file
 
 
@@ -49,25 +55,33 @@ def references(source):
 
 
 def check_pin(name, text, pattern, expected):
-    """Return (errors, line numbers of the match)."""
+    """Return (errors, the (start, end) span of the matched version)."""
     matches = list(re.finditer(pattern, text))
     if len(matches) != 1:
         return [f"{name}: pattern {pattern!r} matches {len(matches)} times, not once"], []
     match = matches[0]
     line = text.count("\n", 0, match.start()) + 1
     if match.group(1) != expected:
-        return [f"{name}:{line}: found {match.group(1)}, versions.toml says {expected}"], [line]
-    return [], [line]
+        return [f"{name}:{line}: found {match.group(1)}, versions.toml says {expected}"], [match.span(1)]
+    return [], [match.span(1)]
 
 
-def stray_versions(name, text, pinned_lines):
+def stray_versions(name, text, pinned_spans):
+    """Blank each pinned span, then report every line that still holds a version."""
+    for start, end in pinned_spans:
+        text = text[:start] + " " * (end - start) + text[end:]
     errors = []
     for number, line in enumerate(text.splitlines(), 1):
-        if number in pinned_lines:
-            continue
         if GO_PATCH.search(line) or LINT_VERSION.search(line):
             errors.append(f"{name}:{number}: version outside versions.toml and the pins: {line.strip()}")
     return errors
+
+
+def scanned_files():
+    for path in sorted(root.rglob("*")):
+        parts = path.relative_to(root).parts
+        if path.is_file() and not SKIPPED.intersection(parts) and (path.suffix in SUFFIXES or path.name == "go.mod"):
+            yield path
 
 
 def reference_errors(record, existing):
@@ -101,14 +115,16 @@ def moved_items(record, go_latest, go_candidates, lint_latest, upstream_commits)
 
 
 def newer_candidates(versions, go_minor):
-    """The newest rc or beta of each minor above the recorded one."""
+    """The newest prerelease of each minor above the recorded one, where any rc beats any beta."""
     recorded = tuple(int(n) for n in go_minor.split("."))
+    stages = {"beta": 0, "rc": 1}
     best = {}
     for version in versions:
-        match = re.fullmatch(r"go(1)\.(\d+)(?:rc|beta)(\d+)", version)
+        match = re.fullmatch(r"go(1)\.(\d+)(rc|beta)(\d+)", version)
         if match and (1, int(match[2])) > recorded:
             key = (1, int(match[2]))
-            best[key] = max(best.get(key, (0, "")), (int(match[3]), version))
+            rank = (stages[match[3]], int(match[4]))
+            best[key] = max(best.get(key, ((-1, 0), "")), (rank, version))
     return [best[key][1] for key in sorted(best)]
 
 
@@ -132,16 +148,12 @@ def check_offline(record):
     errors, pinned = [], {}
     for name, pattern, key in PINS:
         text = (root / name).read_text()
-        found, lines = check_pin(name, text, pattern, values[key])
+        found, spans = check_pin(name, text, pattern, values[key])
         errors += found
-        pinned.setdefault(name, set()).update(lines)
-    for scanned in SCANNED:
-        base = root / scanned
-        files = [base] if base.is_file() else [p for p in base.rglob("*") if p.is_file()]
-        for path in sorted(files):
-            if path.suffix in SUFFIXES or path.name == "go.mod":
-                name = str(path.relative_to(root))
-                errors += stray_versions(name, path.read_text(), pinned.get(name, set()))
+        pinned.setdefault(name, []).extend(spans)
+    for path in scanned_files():
+        name = str(path.relative_to(root))
+        errors += stray_versions(name, path.read_text(), pinned.get(name, []))
     existing = set()
     for path in root.glob("skills/*/references/*.md"):
         if path.name not in NOT_DIGESTS:

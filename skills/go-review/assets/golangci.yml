@@ -1,7 +1,9 @@
 # golangci-lint v2 configuration for the rules in skills/go-best-practices.
 # Copy it to the module root as .golangci.yml.
-# modernize reports errors.As targets, interface{} and context.WithCancel with defer cancel in tests;
-# no tool rewrites b.N loops or the t.Cleanup(cancel) form. staticcheck ST1005 checks error strings.
+# modernize reports errors.As targets, interface{} and context.WithCancel with defer cancel in
+# tests. go fix and modernize leave b.N loops and the t.Cleanup(cancel) form alone; the bloop
+# analyzer in golang.org/x/tools can propose b.Loop, but sits outside the default suite because
+# it can change what a benchmark measures. staticcheck ST1005 checks error strings.
 version: "2"
 
 linters:
@@ -49,21 +51,16 @@ linters:
 
   settings:
     errcheck:
+      # No exclude-functions: a write or Close through an interface can fail. Suppress a
+      # confirmed safe call on its line with //nolint:errcheck and the reason.
       check-blank: true # forcetypeassert reports unchecked type assertions
-      # a read-side Close, and writes through an io.Writer the way errcheck already exempts
-      # os.Stderr
-      exclude-functions:
-        - (io.ReadCloser).Close
-        - fmt.Fprint(io.Writer)
-        - fmt.Fprintf(io.Writer)
-        - fmt.Fprintln(io.Writer)
     exhaustive:
       default-signifies-exhaustive: true
     govet:
       enable-all: true
       disable:
         - fieldalignment # memory layout, not correctness
-        - shadow # flags `if err := f(); err != nil` whenever an outer err exists, which is common
+        - shadow # flags `if err := f(); err != nil` when the outer err is used after it
     nolintlint:
       require-explanation: true
       require-specific: true

@@ -35,15 +35,18 @@ Translate each original test into a Go test before porting the implementation. K
 Go test or one table row per original test, with a name that maps back to it
 (`TestParse/empty_input` for `test_parse_empty_input`), so a reader can check coverage.
 If the original has no tests but runs, compare the port's output with the original's on
-the same inputs instead (section 6).
+the same inputs instead, as the end of section 4 describes. If it can't run either, compare
+against captured outputs or the examples in its documentation, and say in the notes what
+went unchecked.
 
 ## 3. Design the Go API, then implement it
 
 Decide the packages, types, and signatures from the behavior list, not from the
 original's shape. Follow the `go-best-practices` skill for style, and use what the target
 module's `go` line allows (iterators, `min`/`max`, `slices`, `maps`, `errors.AsType`).
-Where a row below differs from `go-best-practices`, the row wins, because the original's
-observable behavior comes first.
+The original's observable behavior comes first. Where a row below differs from
+`go-best-practices`, the row wins, and where a row would change what the original does on
+its real inputs, match the original instead.
 
 ### From C and C++
 
@@ -56,7 +59,7 @@ observable behavior comes first.
 | Flag bitmasks | An options struct with named `bool` fields, or a named integer type with `1 << iota` constants (explicit values when the original's numbers are visible) |
 | `char *` plus length | `string` or `[]byte` |
 | `strcmp` | `==` for equality; `<` or `strings.Compare` for ordering |
-| `strcasecmp` | `strings.EqualFold` for equality; for ordering, compare case-folded strings with the original's folding rules (ASCII only in the C locale) |
+| `strcasecmp` | The original locale's folding rule. In the C locale that folds ASCII only, so fold ASCII letters yourself; `strings.EqualFold` also folds non-ASCII letters such as `Å` and `å` |
 | Pointer plus count | A slice |
 | Fixed-size buffers | Growing slices and `strings.Builder`; keep a limit only if it is behavior |
 | `#define` constants and macros | `const`, typed constants, and functions |
@@ -81,7 +84,7 @@ package behind a safe API.
 | Unbounded `int` | A sized integer chosen on purpose, with overflow checked where input is large, or `math/big` |
 | Generators and `yield` | `iter.Seq[T]` |
 | `sorted(..., key=...)` | `slices.SortStableFunc`; Python's sort is stable, `slices.SortFunc` is not |
-| `with` blocks | `defer` right after the acquisition succeeds |
+| `with` blocks | Release where the block ends: put the block in its own function with `defer` right after the acquisition succeeds, and check `Close` on a resource you wrote |
 | `//` and `%` (floor toward negative infinity) | Go's `/` and `%` truncate toward zero; adjust when operands can be negative |
 | `len(s)`, `s[i]` on `str` (code points) | `len` and indexing count bytes; use `utf8.RuneCountInString` and `for i, r := range s`, or `[]rune(s)` |
 

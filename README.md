@@ -67,7 +67,7 @@ python3 scripts/check-skill.py      # front matter, links, and referenced files
 python3 scripts/check-examples.py   # every Go example is gofmt-clean and passes go vet
 sh scripts/check-lints.sh           # every enabled linter fires on scripts/lint-fixture
 python3 scripts/check-versions.py   # every version agrees with versions.toml
-python3 scripts/check-rules.py      # the rule table matches the skills and the tools
+python3 scripts/check-rules.py      # the rule table is well formed, its ids match scripts/rule-ids.txt, and its tools exist
 ```
 
 A weekly scheduled run, `.github/workflows/upstream.yml`, compares `versions.toml` with

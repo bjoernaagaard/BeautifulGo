@@ -119,7 +119,7 @@ func writeReport(path string, data []byte) (err error) {
 - **Handle an error once.** Return it with context, or log it and stop, never both.
 - **Add context the caller lacks**, lowercase, without "failed to", and skip what the
   wrapped error already says, such as the path in an `*fs.PathError` from `os.Open`.
-  A parser's error lacks the path, so add it:
+  A parser that reads bytes, such as `json.Unmarshal`, never saw the path, so add it:
   `fmt.Errorf("parse config %s: %w", path, err)`.
 - **`%w` makes the cause part of your API.** Use `%v` when the cause is an internal
   detail you may change.
@@ -140,7 +140,10 @@ func describe(err error) string {
 
 - **Exported functions return the `error` interface**, never `*MyError`, because a nil
   `*MyError` in an `error` is not `nil`.
-- **Ignore an error only with `//nolint:errcheck // why it is safe`.**
+- **Ignore an error only with a reason.** Where errcheck reports the call, write
+  `//nolint:errcheck // why it is safe`, as on the response body in section 7. Where
+  errcheck already exempts it, such as `fmt.Println`, write no directive, because
+  nolintlint reports an unused one.
 - **No in-band sentinels** such as `-1`, `""`, or `nil, nil` for "not found". Return
   `ok bool` or an error, and pick one for all the lookups on a type.
 - **`panic` only for programmer errors**, never for caller input, and never `recover` for
@@ -191,7 +194,7 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // only read, so Close has nothing to report
 	return io.ReadAll(resp.Body)
 }
 ```
@@ -257,7 +260,8 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
   wrapper so `go fix` rewrites callers.
 - Start with one package at the module root. Commands go in `cmd/<name>/`, private
   packages in `internal/`. Don't create `pkg/` or layer packages such as `services`.
-- No package-level variable that code reassigns or mutates after start-up, and no `init`
+- No package-level variable that code reassigns or mutates after start-up, except a
+  private cache behind a lock whose hits and misses callers can't tell apart. No `init`
   side effects beyond standard registration.
 
 ## Look up the rest

@@ -11,12 +11,17 @@ https://go.dev/doc/modules/layout, R the release notes or package documentation,
 ours when every source is silent. Where the guides disagree, the parentheses name
 the side taken.
 
+A tool in the check column reports only the forms of a violation it detects, with the
+go-review configuration. A row that also says `reader` has forms the tool misses, so a
+reader checks those too. When the tools did not run, or ran with another configuration,
+check every row by reading.
+
 | id | rule | check | source |
 |---|---|---|---|
 | 1.fix-diff | Preview modernizations before handoff | lint:modernize fix:minmax | ours |
 | 1.format | Run gofmt and leave no unformatted Go files | lint:gofmt | E W G |
 | 1.vet | Run go vet before handoff | lint:govet vet:printf | U |
-| 1.lint | Run golangci-lint with the repository config | lint:revive | U |
+| 1.lint | Run golangci-lint with the repository config | reader | U |
 | 1.race-run | Run the race detector before handoff | reader | ours |
 | 1.vulncheck | Run govulncheck after dependency or security changes | reader | ours |
 | 1.tool-install | Install the tools, or report a missing one | reader | ours |
@@ -40,7 +45,7 @@ the side taken.
 | 2.mux | Use ServeMux method and wildcard patterns | reader | R |
 | 2.iterator-helpers | Use iterator helpers instead of collecting to range | reader | R |
 | 2.generic-alias | Use generic aliases where aliases are needed | reader | R |
-| 2.test-context | Use `t.Context` in tests | lint:modernize fix:testingcontext | G |
+| 2.test-context | Use `t.Context` in tests | lint:modernize fix:testingcontext reader | G |
 | 2.b-loop | Use `b.Loop` in benchmarks | reader | R |
 | 2.test-chdir | Use `t.Chdir` for temporary directory changes in tests | lint:usetesting | R |
 | 2.os-root | Use `os.Root` for untrusted paths | lint:gosec | R |
@@ -97,7 +102,7 @@ the side taken.
 | 4.options-value | Pass options structs by value | reader | ours |
 | 4.options-zero | Make the options zero value mean defaults | reader | ours |
 | 4.functional-options | Reserve functional options for compatible library constructors | reader | ours (G and U allow them more widely; an options struct is less code) |
-| 4.close-write | Check Close after writing to a resource | lint:errcheck | ours |
+| 4.close-write | Check Close after writing to a resource | lint:errcheck reader | ours |
 | 4.iterator-vs-slice | Choose an iterator or a slice by use | reader | ours |
 | 4.stop-yield | Stop calling yield after it returns false | reader | ours |
 | 4.index-slice | Return a slice for indexing or second passes | reader | ours |
@@ -126,7 +131,7 @@ the side taken.
 | 6.error-is | Use `errors.Is` when an error might be wrapped | lint:errorlint | G U |
 | 6.error-as | Use `errors.AsType` for matching concrete error types | lint:modernize fix:errorsastype | ours |
 | 6.exported-error | Return the error interface from exported APIs | reader | G U |
-| 6.ignore-comment | Ignore an error only with an explained nolint | lint:errcheck lint:nolintlint | G (E and W say never discard; Google's explained exception, enforced by nolintlint) |
+| 6.ignore-comment | Ignore an error only with a stated reason | lint:errcheck lint:nolintlint | G (E and W say never discard; Google's explained exception, enforced by nolintlint) |
 | 6.in-band | No in band sentinel for not found | reader | E W G |
 | 6.lookup-consistent | One not found convention per type | reader | ours |
 | 6.panic | Never panic for invalid caller input | reader | W G (E, G and U allow internal or startup panics; caller input never panics) |
@@ -142,13 +147,13 @@ the side taken.
 | 7.cancel-prompt-defer | Defer cancel at once, not later by hand | reader | ours |
 | 7.ctx-values | Context values only for request scoped data | reader | ours |
 | 7.sync-api | Prefer synchronous APIs and let callers add concurrency | reader | W G |
-| 7.cancel-return | Return `ctx.Err` when the operation was canceled | lint:nilerr | ours |
+| 7.cancel-return | Return `ctx.Err` when the operation was canceled | lint:nilerr reader | ours |
 | 7.cancel-outcome | Cancellation is not a result to record | reader | ours |
 | 7.deadline-once | Put one timeout around retries or fallbacks | reader | ours |
 | 7.goroutine-lifetime | Every goroutine has an owner and a wait | reader | W G U (Uber's exception for work that ends on its own) |
 | 7.start-wg | Start owned goroutines with `WaitGroup.Go` when applicable | lint:modernize fix:waitgroupgo | ours |
 | 7.owner-wait | Wait for owned goroutines | reader | U |
-| 7.owner-stop | Give owned goroutines a stop signal | reader | U |
+| 7.owner-stop | Stop signal unless the work ends on its own | reader | U |
 | 7.errgroup-need | errgroup only for first error, cancellation, or limits | reader | ours |
 | 7.mutex-location | Keep the mutex alongside the fields it guards | reader | ours |
 | 7.lock-callback | No caller code while holding a lock | reader | ours |
@@ -220,5 +225,5 @@ the side taken.
 | 11.internal | Put private packages under internal | reader | L |
 | 11.no-pkg | Do not create a pkg directory | reader | ours |
 | 11.no-layer | Avoid generic layer packages such as services | reader | ours |
-| 11.no-mutable-global | No package variables mutated after startup | reader | E G U (Google's observationally transparent state is allowed) |
+| 11.no-mutable-global | No package variables mutated after startup | reader | E G U (Google's private cache that callers cannot observe is the one exception) |
 | 11.no-init-effects | No init side effects beyond registration | reader | ours (E and U allow more in init; only standard registration kept) |

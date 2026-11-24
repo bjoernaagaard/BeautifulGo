@@ -41,7 +41,7 @@ Go Code Review Comments is a wiki page where the Go team collects the small mist
 - Do not `panic` for normal error handling. Use error values and multiple returns.
 - Do not use in-band errors such as `-1`, `""`, or `nil` to mean "not found". Return an extra `error` or `ok bool`, so callers cannot forget to check and cannot mistake a valid value for a failure.
 
-Changes since the wiki was written:
+Go added these after the wiki was written:
 
 - Since Go 1.13, wrap with `fmt.Errorf("...: %w", err)` and match with `errors.Is`. Match types with `errors.AsType`.
 - Use `errors.Join` (Go 1.20) to combine independent errors.

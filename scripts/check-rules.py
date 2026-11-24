@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
-"""Check the rule table against the skills and against the tools it names.
+"""Check the rule table's shape, its ids, and the names of the tools it lists.
 
 Usage: check-rules.py [table.md]   (default skills/go-best-practices/references/rules.md)
+
+Every table row needs an id, a rule, a check and a source. The ids must equal
+scripts/rule-ids.txt, so adding, removing or renaming a rule takes an edit there too.
+Each lint:, vet: and fix: name must be a linter or analyzer the tool has. This is a name
+check: it does not show that the named tool reports the rule.
 """
 import re
 import subprocess
@@ -11,15 +16,34 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 skills = root / "skills"
 config = skills / "go-review/assets/golangci.yml"
+inventory = root / "scripts/rule-ids.txt"
 CHECK_FORMS = re.compile(r"(lint|vet|fix):([A-Za-z0-9_]+)|compiler|reader")
+RULE_ID = re.compile(r"\d+\.[a-z][a-z0-9-]*")
 
 
 def table_rows(text):
-    """Yield (id, check cell) for each data row of the Markdown table."""
-    for line in text.splitlines():
+    """Return (rows, errors). A row is (id, check cell); every table line must be well formed."""
+    rows, errors = [], []
+    for number, line in enumerate(text.splitlines(), 1):
+        if not line.startswith("|"):
+            continue
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if line.startswith("|") and len(cells) == 4 and cells[0] not in ("id",) and not set(cells[0]) <= {"-"}:
-            yield cells[0], cells[2]
+        if cells[0] == "id" or all(set(cell) <= set("-:") for cell in cells):
+            continue
+        if len(cells) != 4 or not all(cells):
+            errors.append(f"line {number}: a row needs a non-empty id, rule, check and source")
+        elif not RULE_ID.fullmatch(cells[0]):
+            errors.append(f"line {number}: malformed id {cells[0]}")
+        else:
+            rows.append((cells[0], cells[2]))
+    return rows, errors
+
+
+def inventory_errors(rows, expected):
+    ids = {rule_id for rule_id, _ in rows}
+    errors = [f"{rule_id}: listed in scripts/rule-ids.txt but has no row" for rule_id in sorted(expected - ids)]
+    errors += [f"{rule_id}: has a row but is not listed in scripts/rule-ids.txt" for rule_id in sorted(ids - expected)]
+    return errors
 
 
 def block_names(output, header, split):
@@ -53,7 +77,7 @@ def rule_errors(rows, sections, known, referenced):
             if not match:
                 errors.append(f"{rule_id}: unknown check {token}")
             elif match[1] and match[2] not in known[match[1]]:
-                errors.append(f"{rule_id}: {match[1]}:{match[2]} is not reported by the tool")
+                errors.append(f"{rule_id}: {match[1]}:{match[2]} is not a linter or analyzer the tool has")
     errors += [f"{name}: `{ref}` has no row in the rule table" for name, ref in referenced if ref not in seen]
     return errors
 
@@ -81,12 +105,13 @@ def main(argv):
     for name in ("go-review", "go-port"):
         text = (skills / name / "SKILL.md").read_text()
         referenced += [(name, ref) for ref in re.findall(r"`(\d+\.[a-z][a-z0-9-]*)`", text)]
-    rows = list(table_rows(table.read_text()))
-    errors = rule_errors(rows, sections, known, referenced)
+    rows, errors = table_rows(table.read_text())
+    expected = set(inventory.read_text().split())
+    errors += inventory_errors(rows, expected) + rule_errors(rows, sections, known, referenced)
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1
-    print(f"{len(rows)} rules match the skills and the tools")
+    print(f"{len(rows)} rules match scripts/rule-ids.txt, and every tool they name exists")
     return 0
 
 

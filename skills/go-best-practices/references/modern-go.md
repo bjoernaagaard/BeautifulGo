@@ -8,8 +8,10 @@ a library function and a hand-written loop. Every section lists "use X instead o
 
 ## Using this digest
 
-- The `go` line decides which language features compile, and `go vet` (run by `go test` since
-  Go 1.27) reports library symbols newer than the line. `go fix` respects it.
+- The `go` line decides which language features compile. The `stdversion` vet check reports
+  a standard library symbol newer than a file's effective version, which is the `go` line or a
+  `//go:build go1.N` tag in that file; Go 1.27 added it to the vet subset `go test` runs.
+  `go fix` respects the line.
   Raise the line first, then run `go fix -diff ./...`, read the diff, and apply it.
 - A library declares the oldest release it tests against. An application declares the
   current release.
@@ -57,17 +59,20 @@ a library function and a hand-written loop. Every section lists "use X instead o
 - Use `slices.Sorted(maps.Keys(m))` instead of collecting keys and sorting them by hand.
 - Timers and tickers: an unreferenced `Timer` or `Ticker` is now garbage collected without
   `Stop`, and the channel is unbuffered, so `Reset` and `Stop` never leave a stale value.
-  Delete the drain-the-channel code before `Reset`. In Go 1.27 this holds for every module;
-  before 1.27 it applied only when the `go` line was 1.23 or higher.
+  In Go 1.27 this holds for every module, because Go 1.27 removed the `asynctimerchan`
+  setting. From Go 1.23 to 1.26 the main module's `go` line of 1.23 or higher selected it as
+  a default, and `asynctimerchan=1` turned it off. Delete the drain-the-channel code before
+  `Reset` only when every toolchain that builds the code gives the new behavior.
 
 ## Go 1.24
 
 - Generic type aliases are fully supported since Go 1.24, and a module needs go 1.23 or higher
   to declare one: `type Set[T comparable] = map[T]struct{}`.
 - Use `testing.T.Context()` (and `B.Context`) instead of `context.WithCancel` plus
-  `t.Cleanup(cancel)`. The context is canceled just before cleanup functions run. The
-  `testingcontext` analyzer rewrites the `defer cancel()` form only, so edit the
-  `t.Cleanup(cancel)` form by hand.
+  `defer cancel()` or `t.Cleanup(cancel)`. The context is canceled just before cleanup
+  functions run. The `testingcontext` analyzer rewrites the `defer cancel()` form only.
+  Edit the `t.Cleanup(cancel)` form by hand only when no cleanup needs the context alive,
+  because cleanups registered after `cancel` used to see a live context.
 - Use `for b.Loop() { ... }` instead of `for i := 0; i < b.N; i++`. Setup before the loop is
   not timed and the compiler keeps the loop body alive.
 - Use `t.Chdir(dir)` instead of `os.Chdir` with manual restore.
