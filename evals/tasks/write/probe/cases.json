@@ -1,0 +1,129 @@
+[
+  {
+    "name": "mixed results",
+    "args": [],
+    "stdin": "{SERVER}/status/200\n{SERVER}/status/503\n\n{SERVER}/status/204\n  {SERVER}/status/404  \n",
+    "stdout": "{SERVER}/status/200 up 200\n{SERVER}/status/503 down 503\n{SERVER}/status/204 up 204\n{SERVER}/status/404 down 404\n",
+    "exitCode": 1
+  },
+  {
+    "name": "all up",
+    "args": [],
+    "stdin": "{SERVER}/status/200\n{SERVER}/status/201\n",
+    "stdout": "{SERVER}/status/200 up 200\n{SERVER}/status/201 up 201\n",
+    "exitCode": 0
+  },
+  {
+    "name": "empty input",
+    "args": [],
+    "stdout": "",
+    "exitCode": 0
+  },
+  {
+    "name": "duplicates are separate lines",
+    "args": [],
+    "stdin": "{SERVER}/status/200\n{SERVER}/status/200\n{SERVER}/status/500\n",
+    "stdout": "{SERVER}/status/200 up 200\n{SERVER}/status/200 up 200\n{SERVER}/status/500 down 500\n",
+    "exitCode": 1
+  },
+  {
+    "name": "connection refused",
+    "args": [],
+    "stdin": "{SERVER}/status/200\nhttp://127.0.0.1:1/health\n",
+    "stdout": "{SERVER}/status/200 up 200\nhttp://127.0.0.1:1/health down error\n",
+    "exitCode": 1
+  },
+  {
+    "name": "two workers at most",
+    "args": [
+      "-workers",
+      "2"
+    ],
+    "stdin": "{SERVER}/slot/pr-limit2/2?delay=300\n{SERVER}/slot/pr-limit2/2?delay=300\n{SERVER}/slot/pr-limit2/2?delay=300\n{SERVER}/slot/pr-limit2/2?delay=300\n{SERVER}/slot/pr-limit2/2?delay=300\n{SERVER}/slot/pr-limit2/2?delay=300\n",
+    "stdout": "{SERVER}/slot/pr-limit2/2?delay=300 up 200\n{SERVER}/slot/pr-limit2/2?delay=300 up 200\n{SERVER}/slot/pr-limit2/2?delay=300 up 200\n{SERVER}/slot/pr-limit2/2?delay=300 up 200\n{SERVER}/slot/pr-limit2/2?delay=300 up 200\n{SERVER}/slot/pr-limit2/2?delay=300 up 200\n",
+    "exitCode": 0
+  },
+  {
+    "name": "four workers by default",
+    "args": [],
+    "stdin": "{SERVER}/slot/pr-limit4/4?delay=200\n{SERVER}/slot/pr-limit4/4?delay=200\n{SERVER}/slot/pr-limit4/4?delay=200\n{SERVER}/slot/pr-limit4/4?delay=200\n{SERVER}/slot/pr-limit4/4?delay=200\n{SERVER}/slot/pr-limit4/4?delay=200\n{SERVER}/slot/pr-limit4/4?delay=200\n{SERVER}/slot/pr-limit4/4?delay=200\n",
+    "stdout": "{SERVER}/slot/pr-limit4/4?delay=200 up 200\n{SERVER}/slot/pr-limit4/4?delay=200 up 200\n{SERVER}/slot/pr-limit4/4?delay=200 up 200\n{SERVER}/slot/pr-limit4/4?delay=200 up 200\n{SERVER}/slot/pr-limit4/4?delay=200 up 200\n{SERVER}/slot/pr-limit4/4?delay=200 up 200\n{SERVER}/slot/pr-limit4/4?delay=200 up 200\n{SERVER}/slot/pr-limit4/4?delay=200 up 200\n",
+    "exitCode": 0
+  },
+  {
+    "name": "one worker at a time",
+    "args": [
+      "-workers",
+      "1"
+    ],
+    "stdin": "{SERVER}/slot/pr-limit1/1?delay=100\n{SERVER}/slot/pr-limit1/1?delay=100\n{SERVER}/slot/pr-limit1/1?delay=100\n{SERVER}/slot/pr-limit1/1?delay=100\n",
+    "stdout": "{SERVER}/slot/pr-limit1/1?delay=100 up 200\n{SERVER}/slot/pr-limit1/1?delay=100 up 200\n{SERVER}/slot/pr-limit1/1?delay=100 up 200\n{SERVER}/slot/pr-limit1/1?delay=100 up 200\n",
+    "exitCode": 0
+  },
+  {
+    "name": "checks run concurrently",
+    "args": [
+      "-workers",
+      "3",
+      "-timeout",
+      "1500ms"
+    ],
+    "stdin": "{SERVER}/slot/pr-conc/3?delay=500\n{SERVER}/slot/pr-conc/3?delay=500\n{SERVER}/slot/pr-conc/3?delay=500\n{SERVER}/slot/pr-conc/3?delay=500\n{SERVER}/slot/pr-conc/3?delay=500\n{SERVER}/slot/pr-conc/3?delay=500\n",
+    "timeLimit": 3,
+    "stdout": "{SERVER}/slot/pr-conc/3?delay=500 up 200\n{SERVER}/slot/pr-conc/3?delay=500 up 200\n{SERVER}/slot/pr-conc/3?delay=500 up 200\n{SERVER}/slot/pr-conc/3?delay=500 up 200\n{SERVER}/slot/pr-conc/3?delay=500 up 200\n{SERVER}/slot/pr-conc/3?delay=500 up 200\n",
+    "exitCode": 0
+  },
+  {
+    "name": "unfinished check is unknown",
+    "args": [
+      "-timeout",
+      "1s"
+    ],
+    "stdin": "{SERVER}/status/200\n{SERVER}/status/200?delay=3000\n{SERVER}/status/404\n",
+    "timeLimit": 2.5,
+    "stdout": "{SERVER}/status/200 up 200\n{SERVER}/status/200?delay=3000 unknown\n{SERVER}/status/404 down 404\n",
+    "exitCode": 3
+  },
+  {
+    "name": "queued checks are unknown",
+    "args": [
+      "-workers",
+      "1",
+      "-timeout",
+      "1s"
+    ],
+    "stdin": "{SERVER}/status/200?delay=300\n{SERVER}/status/200?delay=2500\n{SERVER}/status/500\n",
+    "timeLimit": 2.5,
+    "stdout": "{SERVER}/status/200?delay=300 up 200\n{SERVER}/status/200?delay=2500 unknown\n{SERVER}/status/500 unknown\n",
+    "exitCode": 3
+  },
+  {
+    "name": "deadline before any answer",
+    "args": [
+      "-timeout",
+      "500ms"
+    ],
+    "stdin": "{SERVER}/status/503?delay=3000\n{SERVER}/status/200?delay=3000\n",
+    "timeLimit": 2,
+    "stdout": "{SERVER}/status/503?delay=3000 unknown\n{SERVER}/status/200?delay=3000 unknown\n",
+    "exitCode": 3
+  },
+  {
+    "name": "argument instead of stdin",
+    "args": [
+      "{SERVER}/status/200"
+    ],
+    "stdout": "",
+    "exitCode": 2
+  },
+  {
+    "name": "workers below one",
+    "args": [
+      "-workers",
+      "0"
+    ],
+    "stdin": "{SERVER}/status/200\n",
+    "stdout": "",
+    "exitCode": 2
+  }
+]

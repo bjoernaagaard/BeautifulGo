@@ -1,0 +1,311 @@
+[
+  {
+    "name": "coupon and timestamp",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 2, \"unitCents\": 1250}, {\"sku\": \"ink\", \"qty\": 1, \"unitCents\": 499}], \"coupon\": \"SAVE10\", \"placedAt\": \"2026-05-01T12:30:00+02:00\"}"
+    },
+    "stdoutFormat": "json",
+    "stdout": "{\"id\":\"A-17\",\"customer\":\"Ada\",\"items\":3,\"subtotalCents\":2999,\"discountCents\":299,\"totalCents\":2700,\"placedAt\":\"2026-05-01T10:30:00Z\"}\n",
+    "exitCode": 0
+  },
+  {
+    "name": "no coupon and no timestamp",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 2, \"unitCents\": 1250}, {\"sku\": \"ink\", \"qty\": 1, \"unitCents\": 499}]}"
+    },
+    "stdoutFormat": "json",
+    "stdout": "{\"id\":\"A-17\",\"customer\":\"Ada\",\"items\":3,\"subtotalCents\":2999,\"totalCents\":2999}\n",
+    "exitCode": 0
+  },
+  {
+    "name": "flat coupon larger than subtotal",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"clip\", \"qty\": 3, \"unitCents\": 99}], \"coupon\": \"FLAT500\"}"
+    },
+    "stdoutFormat": "json",
+    "stdout": "{\"id\":\"A-17\",\"customer\":\"Ada\",\"items\":3,\"subtotalCents\":297,\"discountCents\":297,\"totalCents\":0}\n",
+    "exitCode": 0
+  },
+  {
+    "name": "flat coupon smaller than subtotal",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 2, \"unitCents\": 1250}, {\"sku\": \"ink\", \"qty\": 1, \"unitCents\": 499}], \"coupon\": \"FLAT500\"}"
+    },
+    "stdoutFormat": "json",
+    "stdout": "{\"id\":\"A-17\",\"customer\":\"Ada\",\"items\":3,\"subtotalCents\":2999,\"discountCents\":500,\"totalCents\":2499}\n",
+    "exitCode": 0
+  },
+  {
+    "name": "percent coupon rounds down to zero",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"clip\", \"qty\": 1, \"unitCents\": 5}], \"coupon\": \"SAVE10\"}"
+    },
+    "stdoutFormat": "json",
+    "stdout": "{\"id\":\"A-17\",\"customer\":\"Ada\",\"items\":1,\"subtotalCents\":5,\"discountCents\":0,\"totalCents\":5}\n",
+    "exitCode": 0
+  },
+  {
+    "name": "percent coupon rounds down",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pad\", \"qty\": 1, \"unitCents\": 1999}], \"coupon\": \"SAVE10\"}"
+    },
+    "stdoutFormat": "json",
+    "stdout": "{\"id\":\"A-17\",\"customer\":\"Ada\",\"items\":1,\"subtotalCents\":1999,\"discountCents\":199,\"totalCents\":1800}\n",
+    "exitCode": 0
+  },
+  {
+    "name": "null coupon and null timestamp",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 2, \"unitCents\": 1250}, {\"sku\": \"ink\", \"qty\": 1, \"unitCents\": 499}], \"coupon\": null, \"placedAt\": null}"
+    },
+    "stdoutFormat": "json",
+    "stdout": "{\"id\":\"A-17\",\"customer\":\"Ada\",\"items\":3,\"subtotalCents\":2999,\"totalCents\":2999}\n",
+    "exitCode": 0
+  },
+  {
+    "name": "empty coupon",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 2, \"unitCents\": 1250}, {\"sku\": \"ink\", \"qty\": 1, \"unitCents\": 499}], \"coupon\": \"\"}"
+    },
+    "stdoutFormat": "json",
+    "stdout": "{\"id\":\"A-17\",\"customer\":\"Ada\",\"items\":3,\"subtotalCents\":2999,\"totalCents\":2999}\n",
+    "exitCode": 0
+  },
+  {
+    "name": "free line",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"sticker\", \"qty\": 4, \"unitCents\": 0}]}"
+    },
+    "stdoutFormat": "json",
+    "stdout": "{\"id\":\"A-17\",\"customer\":\"Ada\",\"items\":4,\"subtotalCents\":0,\"totalCents\":0}\n",
+    "exitCode": 0
+  },
+  {
+    "name": "read from stdin",
+    "args": [
+      "-"
+    ],
+    "stdin": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 2, \"unitCents\": 1250}, {\"sku\": \"ink\", \"qty\": 1, \"unitCents\": 499}], \"placedAt\": \"2026-01-02T03:04:05Z\"}",
+    "stdoutFormat": "json",
+    "stdout": "{\"id\":\"A-17\",\"customer\":\"Ada\",\"items\":3,\"subtotalCents\":2999,\"totalCents\":2999,\"placedAt\":\"2026-01-02T03:04:05Z\"}\n",
+    "exitCode": 0
+  },
+  {
+    "name": "missing file",
+    "args": [
+      "nope.json"
+    ],
+    "stdout": "",
+    "exitCode": 3
+  },
+  {
+    "name": "unknown member",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 2, \"unitCents\": 1250}, {\"sku\": \"ink\", \"qty\": 1, \"unitCents\": 499}], \"note\": \"leave at door\"}"
+    },
+    "stdout": "",
+    "exitCode": 4
+  },
+  {
+    "name": "unknown member in a line",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 1, \"unitCents\": 100, \"color\": \"red\"}]}"
+    },
+    "stdout": "",
+    "exitCode": 4
+  },
+  {
+    "name": "duplicate member",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-1\", \"customer\": \"Ada\", \"customer\": \"Bob\", \"lines\": [{\"sku\": \"pen\", \"qty\": 1, \"unitCents\": 100}]}"
+    },
+    "stdout": "",
+    "exitCode": 4
+  },
+  {
+    "name": "member name in other case",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-1\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"Qty\": 1, \"unitCents\": 100}]}"
+    },
+    "stdout": "",
+    "exitCode": 4
+  },
+  {
+    "name": "trailing data",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 2, \"unitCents\": 1250}, {\"sku\": \"ink\", \"qty\": 1, \"unitCents\": 499}]} {\"id\": \"A-18\"}"
+    },
+    "stdout": "",
+    "exitCode": 4
+  },
+  {
+    "name": "fractional quantity",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 2.5, \"unitCents\": 100}]}"
+    },
+    "stdout": "",
+    "exitCode": 4
+  },
+  {
+    "name": "quantity as a string",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": \"2\", \"unitCents\": 100}]}"
+    },
+    "stdout": "",
+    "exitCode": 4
+  },
+  {
+    "name": "bad timestamp",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 2, \"unitCents\": 1250}, {\"sku\": \"ink\", \"qty\": 1, \"unitCents\": 499}], \"placedAt\": \"May 1 2026\"}"
+    },
+    "stdout": "",
+    "exitCode": 4
+  },
+  {
+    "name": "malformed json",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-1\", \"customer\": "
+    },
+    "stdout": "",
+    "exitCode": 4
+  },
+  {
+    "name": "array instead of object",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "[]"
+    },
+    "stdout": "",
+    "exitCode": 4
+  },
+  {
+    "name": "zero quantity",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 0, \"unitCents\": 100}]}"
+    },
+    "stdout": "",
+    "exitCode": 5
+  },
+  {
+    "name": "negative price",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 1, \"unitCents\": -5}]}"
+    },
+    "stdout": "",
+    "exitCode": 5
+  },
+  {
+    "name": "unknown coupon",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 2, \"unitCents\": 1250}, {\"sku\": \"ink\", \"qty\": 1, \"unitCents\": 499}], \"coupon\": \"SAVE99\"}"
+    },
+    "stdout": "",
+    "exitCode": 5
+  },
+  {
+    "name": "no lines",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": []}"
+    },
+    "stdout": "",
+    "exitCode": 5
+  },
+  {
+    "name": "missing customer",
+    "args": [
+      "order.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"lines\": [{\"sku\": \"pen\", \"qty\": 2, \"unitCents\": 1250}, {\"sku\": \"ink\", \"qty\": 1, \"unitCents\": 499}]}"
+    },
+    "stdout": "",
+    "exitCode": 5
+  },
+  {
+    "name": "no arguments",
+    "args": [],
+    "stdout": "",
+    "exitCode": 2
+  },
+  {
+    "name": "two arguments",
+    "args": [
+      "order.json",
+      "other.json"
+    ],
+    "files": {
+      "order.json": "{\"id\": \"A-17\", \"customer\": \"Ada\", \"lines\": [{\"sku\": \"pen\", \"qty\": 2, \"unitCents\": 1250}, {\"sku\": \"ink\", \"qty\": 1, \"unitCents\": 499}]}"
+    },
+    "stdout": "",
+    "exitCode": 2
+  }
+]
