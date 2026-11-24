@@ -71,6 +71,7 @@ def bucket_lines(events, width, label_width):
 def tag_summary(events):
     tags = {}
     for event in events:
+        # ast-grep-ignore: python/setdefault-without-defaultdict, port fixture whose expected outputs are fixed; a plain dict keeps the dict order the port must match
         tags.setdefault(event["tag"], []).append(event["offset"])
     lines = []
     for tag, offsets in tags.items():
