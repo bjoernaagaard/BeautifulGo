@@ -14,6 +14,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Versions agree with versions.toml
+        run: python3 scripts/check-versions.py
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.27"
@@ -28,3 +30,7 @@ jobs:
         run: python3 scripts/check-examples.py
       - name: Every enabled linter reports its fixture violation
         run: sh scripts/check-lints.sh
+      - name: Rule table matches the tools
+        run: python3 scripts/check-rules.py
+      - name: Eval harness prepares its folders
+        run: python3 evals/grade.py --prepare "$(mktemp -d)"
