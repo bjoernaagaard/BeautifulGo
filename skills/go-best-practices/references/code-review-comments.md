@@ -35,7 +35,7 @@ Go Code Review Comments is a wiki page where the Go team collects the small mist
 ## Errors
 
 - Return the `error` interface type. Do not return a concrete error type from an exported function, because a nil concrete pointer in an `error` interface is not nil.
-- Do not discard errors with `_`. Handle it, return it, or in the rare case where it is safe to ignore, say why in a comment.
+- Do not discard errors with `_`. If a function returns an error, check it to make sure the function succeeded. Handle the error, return it, or, in truly exceptional situations, panic. The wiki gives no exception for an explained discard; that exception comes from the Google guide.
 - Error strings are not capitalized unless they begin with a proper noun or an acronym, and they do not end with punctuation, because they are usually printed after other context.
 - Handle an error first, return, and keep the normal path at the left. Do not put the normal path in an `else` after a returning `if`.
 - Do not `panic` for normal error handling. Use error values and multiple returns.

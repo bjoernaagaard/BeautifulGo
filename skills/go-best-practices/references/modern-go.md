@@ -8,10 +8,11 @@ a library function and a hand-written loop. Every section lists "use X instead o
 
 ## Using this digest
 
-- The `go` line decides which language features compile. The `stdversion` vet check reports
-  a standard library symbol newer than a file's effective version, which is the `go` line or a
-  `//go:build go1.N` tag in that file; Go 1.27 added it to the vet subset `go test` runs.
-  `go fix` respects the line.
+- The `go` line decides which language features compile. A `//go:build go1.N` tag in a file
+  sets that file's effective version instead, but never below go1.21, so a `go1.20` tag
+  counts as go1.21. The `stdversion` vet check reports a standard library symbol newer than
+  the effective version, and Go 1.27 added it to the vet subset `go test` runs. It skips
+  generated files, so read those yourself. `go fix` respects the line.
   Raise the line first, then run `go fix -diff ./...`, read the diff, and apply it.
 - A library declares the oldest release it tests against. An application declares the
   current release.
@@ -161,6 +162,8 @@ func headAndExt(name string) (string, string) {
 
 ## Analyzers in `go fix`
 
-Run `go fix -diff ./...` to preview and `go fix ./...` to apply. All analyzers run by default,
-and the fixes respect the `go` line and build tags. Run `go tool fix help` for the current list,
+Run `go fix -diff ./...` to preview and `go fix ./...` to apply. Every analyzer that
+`go tool fix help` lists runs by default. Some modernizers in `golang.org/x/tools` sit outside
+that suite because their rewrite can change behavior, such as `bloop`, which proposes
+`b.Loop`. The fixes respect the `go` line and build tags. Run `go tool fix help` for the current list,
 and `go tool fix help NAME` for what one analyzer checks or rewrites.

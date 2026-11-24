@@ -17,9 +17,9 @@ Where a source predates a newer release, the section says what changed.
 ## Goroutine lifetime
 
 - Every goroutine has an owner and a place where its end is awaited. It also needs a way to be
-  told to stop, unless its work ends on its own, as with the finite jobs in `runAll` below.
-  Work that can block or run forever needs the stop signal. Fire-and-forget goroutines leak and
-  lose errors.
+  told to stop, unless its work ends on its own. Work that can block or run forever needs the
+  stop signal. A fire-and-forget goroutine has no such guarantee, so it risks a leak and loses
+  its error even when it happens to exit.
 - Start goroutines with `sync.WaitGroup.Go` (Go 1.25) or `errgroup.Group.Go`. Both pair the
   start with the wait. Before 1.25 the pattern was `wg.Add(1)` and `defer wg.Done()` inside
   the goroutine, and forgetting either one hung or raced. `go fix` rewrites the old form.
@@ -32,7 +32,13 @@ Where a source predates a newer release, the section says what changed.
   on channels, locks, or condition variables that nothing can reach any more. It can miss a
   leak when the primitive is reachable from a global or a runnable goroutine.
 
+`runAll` relies on a contract with its caller: each job finishes on its own and does not
+panic. A job that can block needs a context it watches, and `runAll` would then take that
+context and pass it on.
+
 ```go
+// runAll runs jobs concurrently and returns when all have finished.
+// Each job must finish on its own and must not panic.
 func runAll(jobs []func()) {
 	var wg sync.WaitGroup
 	for _, job := range jobs {

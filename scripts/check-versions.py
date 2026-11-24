@@ -32,8 +32,10 @@ PINS = [
     ("scripts/check-examples.py", r"go (\d+\.\d+)\\n", "go_minor"),
     ("scripts/lint-fixture/go.mod", r"(?m)^go (\d+\.\d+)$", "go_minor"),
 ]
-GO_PATCH = re.compile(r"(?<![\w.])(?:go)?1\.\d+\.\d+(?![\w.])")
-LINT_VERSION = re.compile(r"(?<![\w.])v?2\.\d+\.\d+(?![\w.])|golangci-lint\b.*?(?<![\w.])v?2\.\d+(?![\w])")
+# A version ends at a character that is not a word character and not a dot before a digit,
+# so the period that ends a sentence does not hide the version before it.
+GO_PATCH = re.compile(r"(?<![\w.])(?:go)?1\.\d+\.\d+(?!\w|\.\d)")
+LINT_VERSION = re.compile(r"(?<![\w.])v?2\.\d+\.\d+(?!\w|\.\d)|golangci-lint\b.*?(?<![\w.])v?2\.\d+(?!\w|\.\d)")
 SKIPPED = {".git", "versions.toml"}
 SUFFIXES = {".md", ".yml", ".yaml", ".py", ".sh", ".json", ".toml", ".txt"}
 NOT_DIGESTS = {"rules.md"}  # an index of the rules, not a digest of an upstream file
@@ -115,16 +117,14 @@ def moved_items(record, go_latest, go_candidates, lint_latest, upstream_commits)
 
 
 def newer_candidates(versions, go_minor):
-    """The newest prerelease of each minor above the recorded one, where any rc beats any beta."""
+    """The newest release candidate of each minor above the recorded one. Betas are not candidates."""
     recorded = tuple(int(n) for n in go_minor.split("."))
-    stages = {"beta": 0, "rc": 1}
     best = {}
     for version in versions:
-        match = re.fullmatch(r"go(1)\.(\d+)(rc|beta)(\d+)", version)
-        if match and (1, int(match[2])) > recorded:
-            key = (1, int(match[2]))
-            rank = (stages[match[3]], int(match[4]))
-            best[key] = max(best.get(key, ((-1, 0), "")), (rank, version))
+        match = re.fullmatch(r"go1\.(\d+)rc(\d+)", version)
+        if match and (1, int(match[1])) > recorded:
+            key = (1, int(match[1]))
+            best[key] = max(best.get(key, (0, "")), (int(match[2]), version))
     return [best[key][1] for key in sorted(best)]
 
 

@@ -18,16 +18,16 @@ check every row by reading.
 
 | id | rule | check | source |
 |---|---|---|---|
-| 1.fix-diff | Preview modernizations before handoff | lint:modernize fix:minmax | ours |
+| 1.fix-diff | Preview modernizations before handoff | lint:modernize fix:minmax reader | ours |
 | 1.format | Run gofmt and leave no unformatted Go files | lint:gofmt | E W G |
-| 1.vet | Run go vet before handoff | lint:govet vet:printf | U |
+| 1.vet | Run go vet before handoff | lint:govet vet:printf reader | U |
 | 1.lint | Run golangci-lint with the repository config | reader | U |
 | 1.race-run | Run the race detector before handoff | reader | ours |
 | 1.vulncheck | Run govulncheck after dependency or security changes | reader | ours |
 | 1.tool-install | Install the tools, or report a missing one | reader | ours |
 | 1.fix-findings | Fix findings rather than suppress them | reader | ours |
 | 1.suppress | Explain a line suppression and name the linter | lint:nolintlint | ours |
-| 1.go-fix-modernize | Apply available modernizations with go fix | lint:modernize fix:rangeint | ours |
+| 1.go-fix-modernize | Apply available modernizations with go fix | lint:modernize fix:rangeint reader | ours |
 | 1.race-bug | Treat race reports as bugs | reader | ours |
 | 2.read-version | Read the go line before using a feature | compiler | ours |
 | 2.new-module | Declare the current release in a new module | reader | ours |
@@ -48,7 +48,7 @@ check every row by reading.
 | 2.test-context | Use `t.Context` in tests | lint:modernize fix:testingcontext reader | G |
 | 2.b-loop | Use `b.Loop` in benchmarks | reader | R |
 | 2.test-chdir | Use `t.Chdir` for temporary directory changes in tests | lint:usetesting | R |
-| 2.os-root | Use `os.Root` for untrusted paths | lint:gosec | R |
+| 2.os-root | Use `os.Root` for untrusted paths | lint:gosec reader | R |
 | 2.omitzero | Use omitzero for relevant JSON fields | lint:modernize fix:omitzero | R |
 | 2.tools-directive | Use tool directives in place of `tools.go` | reader | R |
 | 2.split-seq | Use `strings.SplitSeq` when ranging over split results | lint:modernize fix:stringsseq | R |
@@ -77,7 +77,7 @@ check every row by reading.
 | 2.no-di | Add no DI container unless already used | reader | ours |
 | 2.no-assertion-dependency | Add no assertion dependency unless already used | reader | G |
 | 2.exp | Replace `x/exp` packages the standard library provides | lint:exptostd | ours |
-| 3.stutter | Avoid names that repeat the package name | lint:revive | E G |
+| 3.stutter | Avoid names that repeat the package name | lint:revive reader | E G |
 | 3.package-name | No util, common, helpers, models, or misc packages | reader | W G U |
 | 3.package-common | Avoid generic common, helpers, models, and misc names | reader | W G U |
 | 3.getter | Use no Get prefix on getters | reader | E G |
@@ -95,9 +95,9 @@ check every row by reading.
 | 3.enum-valid-zero | Name a zero state that code uses | reader | U |
 | 3.enum-no-literal-zero | Use the named zero constant in comparisons | reader | ours |
 | 3.enum-roundtrip | Accept every String name in the enum parser | reader | ours |
-| 4.early-return | Return early, with no else after return | lint:revive | E W G U |
+| 4.early-return | Return early, with no else after return | lint:revive reader | E W G U |
 | 4.early-return-indent | Leave the successful path unindented | reader | E W G U |
-| 4.bool-param | Avoid Boolean parameters in exported signatures | lint:revive | ours (Google allows Boolean options and Uber call site comments; a named type reads at the call site) |
+| 4.bool-param | Avoid Boolean parameters in exported signatures | lint:revive reader | ours (Google allows Boolean options and Uber call site comments; a named type reads at the call site) |
 | 4.options-count | Options struct for three or more optional settings | reader | ours (G and U leave the form open; one threshold keeps APIs alike) |
 | 4.options-value | Pass options structs by value | reader | ours |
 | 4.options-zero | Make the options zero value mean defaults | reader | ours |
@@ -131,7 +131,7 @@ check every row by reading.
 | 6.error-is | Use `errors.Is` when an error might be wrapped | lint:errorlint | G U |
 | 6.error-as | Use `errors.AsType` for matching concrete error types | lint:modernize fix:errorsastype | ours |
 | 6.exported-error | Return the error interface from exported APIs | reader | G U |
-| 6.ignore-comment | Ignore an error only with a stated reason | lint:errcheck lint:nolintlint | G (E and W say never discard; Google's explained exception, enforced by nolintlint) |
+| 6.ignore-comment | Ignore an error only with a stated reason | lint:errcheck lint:nolintlint reader | G (E and W say never discard; Google's explained exception, enforced by nolintlint) |
 | 6.in-band | No in band sentinel for not found | reader | E W G |
 | 6.lookup-consistent | One not found convention per type | reader | ours |
 | 6.panic | Never panic for invalid caller input | reader | W G (E, G and U allow internal or startup panics; caller input never panics) |
@@ -140,9 +140,9 @@ check every row by reading.
 | 6.run-error | main calls run, which returns error | reader | ours |
 | 7.ctx-required | Take context on blocking or I/O functions | reader | ours |
 | 7.ctx-first | Put context first and name it ctx | lint:revive | W G (the wiki says most functions; Google's always first rule wins) |
-| 7.ctx-struct | Do not store context in a struct | lint:containedctx | W G (both allow it to match a fixed signature; the skill bans it) |
+| 7.ctx-struct | Do not store context in a struct | lint:containedctx reader | W G (both allow it to match a fixed signature; the skill bans it) |
 | 7.ctx-name | Name the context argument ctx | reader | ours |
-| 7.ctx-propagate | Do not replace a caller context with Background | lint:contextcheck | W G (Google admits another root when the caller's is wrong; the skill keeps the normal rule) |
+| 7.ctx-propagate | Do not replace a caller context with Background | lint:contextcheck reader | W G (Google admits another root when the caller's is wrong; the skill keeps the normal rule) |
 | 7.cancel-defer | Defer cancel after deriving a context | lint:gosec lint:govet vet:lostcancel | ours |
 | 7.cancel-prompt-defer | Defer cancel at once, not later by hand | reader | ours |
 | 7.ctx-values | Context values only for request scoped data | reader | ours |
@@ -176,8 +176,8 @@ check every row by reading.
 | 8.omitempty | Keep omitempty for empty strings, slices and maps | reader | ours |
 | 8.json-strict | Use `encoding/json/v2` for new strict decoding | reader | ours |
 | 8.json-error-text | Do not assert exact `encoding/json` error text | reader | ours (Uber asserts error text; the json v2 engine changes the wording) |
-| 8.root | Use `os.OpenRoot` for untrusted file names | lint:gosec | ours |
-| 8.rand-secret | Use `crypto/rand` and `rand.Text` for secrets or tokens | lint:gosec | W G |
+| 8.root | Use `os.OpenRoot` for untrusted file names | lint:gosec reader | ours |
+| 8.rand-secret | Use `crypto/rand` and `rand.Text` for secrets or tokens | lint:gosec reader | W G |
 | 8.rand-nonsecret | Use `math/rand/v2` for nonsecret randomness | reader | ours |
 | 8.rand-token | Use `crypto/rand.Text` for generated tokens | reader | ours (Google uses the reader plus an encoding; rand.Text drops that step) |
 | 8.readheader-timeout | Set ReadHeaderTimeout on HTTP servers | lint:gosec | ours |
@@ -213,7 +213,7 @@ check every row by reading.
 | 10.real-resource | A real temp directory or server over mocks | reader | ours (Google uses real transports and Uber mocks; a real resource tests more) |
 | 10.benchmark-loop | Use `b.Loop` in benchmarks | reader | ours |
 | 10.fuzz-parser | Fuzz parsers for untrusted input | reader | ours |
-| 11.doc-present | Add a doc comment for every exported name | lint:revive | E W G |
+| 11.doc-present | Add a doc comment for every exported name | lint:revive reader | E W G |
 | 11.doc-sentence | Doc comments start with the name | reader | E W G |
 | 11.doc-contract | Document what the signature cannot say | reader | G U |
 | 11.doc-errors | Document errors callers can match | reader | G U |
@@ -221,7 +221,7 @@ check every row by reading.
 | 11.deprecated | Use a Deprecated: paragraph for retired APIs | reader | ours |
 | 11.fix-inline | Use go:fix inline on retired one-line wrappers | reader | ours |
 | 11.module-root | Start with one root package | reader | L |
-| 11.cmd | Put commands under cmd | reader | L |
+| 11.cmd | Put commands under cmd when the module also has importable packages | reader | L |
 | 11.internal | Put private packages under internal | reader | L |
 | 11.no-pkg | Do not create a pkg directory | reader | ours |
 | 11.no-layer | Avoid generic layer packages such as services | reader | ours |

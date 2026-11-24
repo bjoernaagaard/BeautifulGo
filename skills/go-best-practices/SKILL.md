@@ -194,7 +194,7 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close() //nolint:errcheck // only read, so Close has nothing to report
+	defer resp.Body.Close() //nolint:errcheck // the result comes from ReadAll, and a Close error cannot change it
 	return io.ReadAll(resp.Body)
 }
 ```
@@ -258,8 +258,9 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
   ownership of returned slices and maps.
 - Mark retired APIs with `// Deprecated:`, and add `//go:fix inline` to a one-line
   wrapper so `go fix` rewrites callers.
-- Start with one package at the module root. Commands go in `cmd/<name>/`, private
-  packages in `internal/`. Don't create `pkg/` or layer packages such as `services`.
+- Start with one package at the module root, which is `package main` for a single
+  command. When a module holds commands beside importable packages, commands go in
+  `cmd/<name>/`. Private packages go in `internal/`. Don't create `pkg/` or layer packages such as `services`.
 - No package-level variable that code reassigns or mutates after start-up, except a
   private cache behind a lock whose hits and misses callers can't tell apart. No `init`
   side effects beyond standard registration.

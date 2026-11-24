@@ -3,7 +3,8 @@
 
 Usage: check-rules.py [table.md]   (default skills/go-best-practices/references/rules.md)
 
-Every table row needs an id, a rule, a check and a source. The ids must equal
+Every table row needs an id, a rule, a check and a source. The source starts with guide
+letters from E W G U L R, or with ours, and may add an explanation in parentheses. The ids must equal
 scripts/rule-ids.txt, so adding, removing or renaming a rule takes an edit there too.
 Each lint:, vet: and fix: name must be a linter or analyzer the tool has. This is a name
 check: it does not show that the named tool reports the rule.
@@ -19,6 +20,8 @@ config = skills / "go-review/assets/golangci.yml"
 inventory = root / "scripts/rule-ids.txt"
 CHECK_FORMS = re.compile(r"(lint|vet|fix):([A-Za-z0-9_]+)|compiler|reader")
 RULE_ID = re.compile(r"\d+\.[a-z][a-z0-9-]*")
+# The guide letters, or ours, optionally followed by an explanation in parentheses.
+SOURCE = re.compile(r"(?:ours|[EWGULR](?: [EWGULR])*)(?: \(.+\))?")
 
 
 def table_rows(text):
@@ -34,6 +37,8 @@ def table_rows(text):
             errors.append(f"line {number}: a row needs a non-empty id, rule, check and source")
         elif not RULE_ID.fullmatch(cells[0]):
             errors.append(f"line {number}: malformed id {cells[0]}")
+        elif not SOURCE.fullmatch(cells[3]):
+            errors.append(f"line {number}: source {cells[3]!r} is not guide letters or ours")
         else:
             rows.append((cells[0], cells[2]))
     return rows, errors

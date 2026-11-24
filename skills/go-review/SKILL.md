@@ -47,9 +47,10 @@ The first group is where real bugs live.
   or slice without a length check, a nil pointer from a function that returns `nil, nil`.
 - A data race: shared state written without a lock, a loop that appends to a slice from
   several goroutines, a map read and written concurrently.
-- Goroutine leaks: no owner or no wait; no stop signal on work that can block or run
-  forever, while finite work that ends on its own needs none; a send on a channel nobody
-  reads after the caller returned; a missing `wg.Wait` or `g.Wait`.
+- Goroutine leaks: a send on a channel nobody reads after the caller returned, or work
+  that can block forever with no stop signal. Report a leak only when you can name the
+  blocked operation. A goroutine with no owner, no wait, or no documented promise that its
+  work ends is a missing lifecycle guarantee, so report that as the finding instead.
 - Context misuse: a derived context whose `cancel` is never called, `context.Background()`
   inside a request path, a context stored in a struct, a blocking call that ignores
   `ctx.Done()`, a canceled call recorded as an outcome, or a per-request timeout on an
@@ -68,9 +69,11 @@ The first group is where real bugs live.
 
 Check each rule in `go-best-practices` whose `check` column in
 `go-best-practices/references/rules.md` says `reader`, including rows that also name a
-tool, because the tool reports only some forms. The tools in section 2 report the rest
-only when they ran with this skill's configuration; otherwise check those rows by reading
-too. Hold a library to the API rules strictly. Report the rewrites `go fix -diff ./...`
+tool, because the tool reports only some forms. Treat every tool result as evidence, not
+as proof that a rule holds. Even with this skill's configuration, the tools skip test
+files for some linters, skip `cmd` and `internal` for the library rules, and cannot see
+whether a command ran, so read for those cases too. When the tools did not run, check
+every row by reading. Hold a library to the API rules strictly. Report the rewrites `go fix -diff ./...`
 proposes as one Consider finding, and flag what it leaves alone:
 `for i := 0; i < b.N; i++`, `time.Sleep` in tests, a `tools.go` file, and
 `t.Cleanup(cancel)` in tests when no cleanup needs the context alive.
@@ -91,8 +94,9 @@ Use the structure in `assets/review-template.md`.
 Rules for each finding:
 
 - Cite the line a tool reports. For a reader finding, cite the line of the faulty
-  expression, such as the type assertion or the call whose result leaks, not the line that
-  registers, wraps or returns it; use `whole file` only when no line fits.
+  expression, such as the type assertion, or for a response body that is never closed the
+  `client.Do` line, which is where `bodyclose` reports it. Don't cite the line that
+  registers, wraps or returns the value. Use `whole file` only when no line fits.
 - Cite the rule by its id in `rules.md`, such as `6.error-is`, and the linter or analyzer
   when a tool reported it. When no row fits, such as for an unchecked type assertion, cite
   the linter or the Go rule directly, such as `forcetypeassert`.

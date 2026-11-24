@@ -84,7 +84,7 @@ package behind a safe API.
 | Unbounded `int` | A sized integer chosen on purpose, with overflow checked where input is large, or `math/big` |
 | Generators and `yield` | `iter.Seq[T]` |
 | `sorted(..., key=...)` | `slices.SortStableFunc`; Python's sort is stable, `slices.SortFunc` is not |
-| `with` blocks | Release where the block ends: put the block in its own function with `defer` right after the acquisition succeeds, and check `Close` on a resource you wrote |
+| `with` blocks | For a manager that only releases a resource, release where the block ends: put the block in its own function with `defer` right after the acquisition succeeds, and check `Close` on a resource you wrote. When `__exit__` can swallow the exception or act on it, write that handling out in Go |
 | `//` and `%` (floor toward negative infinity) | Go's `/` and `%` truncate toward zero; adjust when operands can be negative |
 | `len(s)`, `s[i]` on `str` (code points) | `len` and indexing count bytes; use `utf8.RuneCountInString` and `for i, r := range s`, or `[]rune(s)` |
 
