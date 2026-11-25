@@ -370,6 +370,11 @@ def grade(arm: Path, config: Path) -> tuple[dict, int]:
     return summarize(modules, review), problems
 
 
+def missing_task_dirs(arm: Path) -> list[str]:
+    """Name the folders that --prepare creates and that the arm lacks."""
+    return [f"{kind}/{task.name}" for kind in KINDS for task in task_dirs(kind) if not (arm / kind / task.name).is_dir()]
+
+
 def prepare(arm: Path) -> None:
     if arm.exists() and any(arm.iterdir()):
         sys.exit(f"{arm} is not empty")
@@ -398,7 +403,13 @@ def main() -> None:
     missing = [tool for tool in ("go", "golangci-lint") if shutil.which(tool) is None]
     if missing:
         sys.exit(f"missing tools: {', '.join(missing)}")
-    scores, problems = grade(args.arm.resolve(), args.lint_config.resolve())
+    arm = args.arm.resolve()
+    if not arm.is_dir():
+        sys.exit(f"{arm} is not a folder, so there is nothing to grade")
+    absent = missing_task_dirs(arm)
+    if absent:
+        sys.exit(f"{arm} lacks the task folders {', '.join(absent)}, so it is not a prepared arm")
+    scores, problems = grade(arm, args.lint_config.resolve())
     print(json.dumps({key: scores[key] for key in SCORE_KEYS}))
     if problems:
         sys.exit(f"{problems} grading problems, listed above, make these scores incomplete")

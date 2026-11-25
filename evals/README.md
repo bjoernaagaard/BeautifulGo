@@ -38,7 +38,8 @@ python3 evals/grade.py --arm /tmp/arm-skills --lint-config skills/go-review/asse
 folder, and copies in the Python source and the review module. It never copies
 `cases.json`, `key.json` or a reference solution.
 
-`--arm` needs Go and golangci-lint. It starts a local HTTP server for the cases that make
+`--arm` needs Go and golangci-lint, and a folder that `--prepare` made. It exits 1 when the
+folder or one of its task folders is missing. It starts a local HTTP server for the cases that make
 requests, and prints one line per task, then one JSON object as its last line:
 
 | Key | Meaning |
