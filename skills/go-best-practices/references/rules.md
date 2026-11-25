@@ -126,7 +126,7 @@ check every row by reading.
 | 6.error-case | Use lowercase error text | lint:staticcheck | W G |
 | 6.error-failed | No "failed to" in error context | reader | G U |
 | 6.error-redundancy | Avoid repeating data the wrapped error already carries | reader | G U |
-| 6.wrap-public | Use `%w` when callers match the cause (errorlint flags every `%v` of an error and misses `err.Error()`, and cannot tell whether the cause is public) | lint:errorlint reader | G U |
+| 6.wrap-public | Use `%w` when callers match the cause (errorlint flags `%v` of an error value, misses `err.Error()` and an error converted to `any`, and cannot tell whether the cause is public) | lint:errorlint reader | G U |
 | 6.hide-private | Use `%v` for a private cause | reader | G U |
 | 6.error-text | Never match errors by message text | reader | G U |
 | 6.error-is | Use `errors.Is` when an error might be wrapped | lint:errorlint | G U |

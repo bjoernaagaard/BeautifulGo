@@ -35,7 +35,7 @@ def table_rows(text):
         return [], [f"the table must start with the lines {HEADER} and {SEPARATOR}"]
     rows, errors = [], []
     for number, line in lines[2:]:
-        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        cells = [cell.strip() for cell in line.rstrip().removesuffix("|")[1:].split("|")]
         if len(cells) != 4 or not all(cells):
             errors.append(f"line {number}: a row needs a non-empty id, rule, check and source")
         elif not RULE_ID.fullmatch(cells[0]):

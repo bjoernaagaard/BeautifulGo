@@ -143,10 +143,14 @@ def count_lint_issues(report: str) -> int | None:
         return None
 
 
-def parse_findings(text: str) -> tuple[list, str | None]:
-    """Return (findings, problem). A file that is not a JSON list gives no findings and a problem."""
+def reject_constant(token: str) -> None:
+    raise ValueError(f"invalid JSON constant: {token}")
+
+
+def parse_findings(data: bytes) -> tuple[list, str | None]:
+    """Return (findings, problem). A file that is not a strict UTF-8 JSON list gives no findings and a problem."""
     try:
-        findings = json.loads(text)
+        findings = json.loads(data.decode("utf-8"), parse_constant=reject_constant)
     except ValueError as err:
         return [], f"not valid JSON: {err}"
     if not isinstance(findings, list):
@@ -351,12 +355,12 @@ def grade(arm: Path, config: Path) -> tuple[dict, int]:
                 score = grade_module(arm / kind / task.name, cases, Path(bins, f"{kind}-{task.name}"), server, config)
                 modules[kind, task.name] = score
                 problems += not score.linted
-                print(f"{kind}/{task.name}: built={score.built} linted={score.linted} "
+                print(f"{kind}/{task.name}: built={score.built} linted={score.linted if score.built else 'skipped'} "
                       f"cases={score.passed}/{score.total} lint={score.lint} fix={score.fix}")
     for task in task_dirs("review"):
         defects = load_defects(task / "key.json")
         path = arm / "review" / task.name / "findings.json"
-        findings, problem = parse_findings(path.read_text(encoding="utf-8", errors="replace")) if path.is_file() else ([], None)
+        findings, problem = parse_findings(path.read_bytes()) if path.is_file() else ([], None)
         if problem:
             problems += 1
             print(f"{path}: {problem}, so it scores no findings", file=sys.stderr)

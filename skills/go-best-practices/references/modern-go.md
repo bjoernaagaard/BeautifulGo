@@ -13,8 +13,8 @@ a library function and a hand-written loop. Every section lists "use X instead o
   file sets another one. The constraint can raise or lower it, but never below go1.21, so a
   `go1.20` constraint counts as go1.21. The `stdversion` vet check reports a standard library
   symbol newer than the effective version, and Go 1.27 added it to the vet subset `go test`
-  runs. It skips generated files and every module whose `go` line is below 1.21, so read
-  those yourself. `go fix` respects the line.
+  runs. It skips generated files, files that import "C", and every module whose `go` line is
+  below 1.21, so read those yourself. `go fix` respects the line.
   Raise the line first, then run `go fix -diff ./...`, read the diff, and apply it.
 - A library declares the oldest release it tests against. An application declares the
   current release.
@@ -144,8 +144,8 @@ a library function and a hand-written loop. Every section lists "use X instead o
   `/debug/pprof/goroutineleak`) to find goroutines blocked forever on unreachable channels and
   locks. It can miss leaks that hang on a global or a runnable goroutine.
 - `go test` runs the `stdversion` vet check by default, so a file that uses an API newer than
-  its effective language version fails the test run. Generated files and modules whose `go`
-  line is below 1.21 are exempt.
+  its effective language version fails the test run. Generated files, files that import
+  "C", and modules whose `go` line is below 1.21 are exempt.
 
 ```go
 type List[T any] []T

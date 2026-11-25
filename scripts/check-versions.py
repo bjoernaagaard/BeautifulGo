@@ -38,7 +38,10 @@ PINS = [
 # A version ends at a character that is not a word character and not a dot before a digit,
 # so the period that ends a sentence does not hide the version before it.
 GO_PATCH = re.compile(r"(?<![\w.])(?:go)?1\.\d+\.\d+(?!\w|\.\d)")
-LINT_VERSION = re.compile(r"(?<![\w.])v?2\.\d+\.\d+(?!\w|\.\d)|golangci-lint\b.*?(?<![\w.])v?2\.\d+(?!\w|\.\d)")
+LINT_PATCH = re.compile(r"(?<![\w.])v?2\.\d+\.\d+(?!\w|\.\d)")
+# A bare 2.N counts as a golangci-lint version only on a line that names the tool, before or after it.
+LINT_MINOR = re.compile(r"(?<![\w.])v?2\.\d+(?!\w|\.\d)")
+LINT_NAME = re.compile(r"\bgolangci-lint\b")
 SKIPPED = {".git", "versions.toml"}
 SUFFIXES = {".md", ".yml", ".yaml", ".py", ".sh", ".json", ".toml", ".txt", ".go", ".mod"}
 NOT_DIGESTS = {"rules.md"}  # an index of the rules, not a digest of an upstream file
@@ -77,7 +80,8 @@ def stray_versions(name, text, pinned_spans):
         text = text[:start] + " " * (end - start) + text[end:]
     errors = []
     for number, line in enumerate(text.splitlines(), 1):
-        if GO_PATCH.search(line) or LINT_VERSION.search(line):
+        lint_minor = LINT_NAME.search(line) and LINT_MINOR.search(line)
+        if GO_PATCH.search(line) or LINT_PATCH.search(line) or lint_minor:
             errors.append(f"{name}:{number}: version outside versions.toml and the pins: {line.strip()}")
     return errors
 

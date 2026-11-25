@@ -20,7 +20,8 @@ Where a source predates a newer release, the section says what changed.
   predictable finish or a stop signal. A job with a predictable finish needs no stop signal,
   even when it waits briefly, such as on a call with a timeout. Work that can block forever or
   runs until told to stop needs the stop signal. A fire-and-forget goroutine has no such
-  guarantee, so it risks a leak and loses its error even when it happens to exit.
+  guarantee, so it can leak. Handle any error inside it, or return the error through a task
+  that someone owns.
 - Keep the code simple enough that the lifetime is evident. Document when and why the
   goroutine ends only when the code cannot make that evident.
 - Start goroutines with `sync.WaitGroup.Go` (Go 1.25) or `errgroup.Group.Go`. Both pair the
@@ -36,8 +37,9 @@ Where a source predates a newer release, the section says what changed.
   leak when the primitive is reachable from a global or a runnable goroutine.
 
 `runAll` relies on a contract with its caller. Each job has a predictable finish and does
-not panic. A job that can block forever needs a context it watches, and `runAll` would then
-take that context and pass it on. The doc comment states the contract, because the code of
+not panic. A job that can block forever needs a stop signal it watches, such as a context
+or a stop channel, and `runAll` would then take that signal and pass it on. The doc comment
+states the contract, because the code of
 `runAll` alone cannot show how its jobs end.
 
 ```go

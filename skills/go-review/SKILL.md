@@ -49,7 +49,7 @@ The first group is where real bugs live.
   several goroutines, a map read and written concurrently.
 - Goroutine leaks: a send on a channel nobody reads after the caller returned, or work
   that can block forever with no stop signal. Report a leak only when you can name the
-  blocked operation. A goroutine with no owner, no way to wait for it, or neither a
+  operation or loop that keeps the goroutine from ending. A goroutine with no owner, no way to wait for it, or neither a
   predictable finish nor a stop signal is a missing lifecycle guarantee, so report that
   instead. Ask for a comment on when it ends only when the code does not make that evident.
 - Context misuse: a derived context whose `cancel` is never called, `context.Background()`
