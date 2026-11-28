@@ -99,7 +99,7 @@ def reference_errors(record, existing):
     for source in record["source"]:
         named.update(references(source))
     errors = [f"{path}: no [[source]] row in versions.toml" for path in sorted(existing - named)]
-    errors += [f"versions.toml: reference {ref} does not exist" for ref in sorted(named - existing)]
+    errors += [f"versions.toml: reference {ref} does not exist" for ref in sorted(named) if not (root / ref).is_file()]
     return errors
 
 

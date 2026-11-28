@@ -1,9 +1,10 @@
 # golangci-lint v2 configuration for the rules in skills/go-best-practices.
 # Copy it to the module root as .golangci.yml.
-# modernize reports errors.As targets, interface{} and context.WithCancel with defer cancel in
-# tests. go fix and modernize leave b.N loops and the t.Cleanup(cancel) form alone; the bloop
-# analyzer in golang.org/x/tools can propose b.Loop, but sits outside the default suite because
-# it can change what a benchmark measures. staticcheck ST1005 checks error strings.
+# modernize covers Go 1.27's go fix suite (errors.AsType, interface{}, new(expr), wg.Go,
+# atomictypes, embedlit, slicesbackward, testingcontext, etc.). go fix and modernize leave
+# b.N loops and the t.Cleanup(cancel) form alone; the bloop analyzer in golang.org/x/tools
+# sits outside the default suite because it can change what a benchmark measures.
+# staticcheck ST1005 checks error strings; usetesting checks context.Background/TODO in tests.
 version: "2"
 
 linters:
@@ -13,9 +14,14 @@ linters:
     - bodyclose
     - errcheck
     - forcetypeassert
+    - gocheckcompilerdirectives
     - govet
     - ineffassign
+    - makezero
+    - mirror
     - nilerr
+    - nilnesserr
+    - nilnil
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
@@ -30,9 +36,11 @@ linters:
     - fatcontext
     - noctx
     # API shape and style
+    - canonicalheader
     - exhaustive
     - gocritic
     - iface
+    - predeclared
     - recvcheck
     - revive
     - unconvert
@@ -48,11 +56,14 @@ linters:
     - nolintlint
     - sloglint
     - thelper
+    - tparallel
 
   settings:
     errcheck:
-      # No exclude-functions: a write or Close through an interface can fail. Suppress a
-      # confirmed safe call on its line with //nolint:errcheck and the reason.
+      # No blanket exclude-functions: a write or Close through an interface can fail.
+      # Check Close after writes; suppress confirmed read-only closes (resp.Body.Close,
+      # read-only File.Close, os.Root.Close) or best-effort os.Remove with //nolint:errcheck
+      # and the reason.
       check-blank: true # forcetypeassert reports unchecked type assertions
     exhaustive:
       default-signifies-exhaustive: true
@@ -91,16 +102,23 @@ linters:
         - name: var-naming
     sloglint:
       attr-only: false
+      # When logging after a context is canceled (e.g. shutdown), pass context.WithoutCancel(ctx)
+      # or add a targeted //nolint:sloglint with the reason.
       context: scope
       key-naming-case: snake
       no-mixed-args: true
       static-msg: true
+    usetesting:
+      context-background: true
+      context-todo: true
 
   exclusions:
     # No presets: common-false-positives hides gosec G304, the check for paths from user input.
+    # For non-secret math/rand/v2 jitter, suppress G404 on that line with //nolint:gosec.
     rules:
       # revive's exported and flag-parameter rules are library rules; commands and private
-      # packages are application code.
+      # packages are application code. For an application whose domain packages sit at the
+      # module root rather than under internal/, widen this path regex to `\.go$`.
       - path: (^|/)(cmd|internal)/|^main\.go$|/main\.go$
         linters:
           - revive
@@ -115,6 +133,7 @@ linters:
           - errcheck
           - forcetypeassert
           - gosec
+          - noctx
           - unparam
 
 formatters:

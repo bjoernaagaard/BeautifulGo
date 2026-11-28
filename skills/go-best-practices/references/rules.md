@@ -15,12 +15,17 @@ where they say "related", that guide only discusses the topic and does not state
 A tool in the check column reports only the forms of a violation it detects, with the
 go-review configuration. A row that also says `reader` has forms the tool misses, so a
 reader checks those too. When the tools did not run, or ran with another configuration,
-check every row by reading.
+check every row by reading. Additional general-hygiene and bug linters enabled in
+`golangci.yml` (`canonicalheader`, `errname`, `exhaustive`, `fatcontext`, `forcetypeassert`,
+`gocheckcompilerdirectives`, `gocritic`, `iface`, `ineffassign`, `makezero`, `mirror`,
+`misspell`, `rowserrcheck`, `sqlclosecheck`, `tparallel`, `unconvert`, `unparam`, `unused`,
+`usestdlibvars`, `wastedassign`) and `go fix` analyzers (`buildtag`, `hostport`, `plusbuild`)
+run automatically even where no separate prose bullet in `SKILL.md` names them.
 
 | id | rule | check | source |
 |---|---|---|---|
 | 1.fix-diff | Preview modernizations before handoff | lint:modernize fix:minmax reader | ours |
-| 1.format | Run gofmt and leave no unformatted Go files | lint:gofmt | E W G |
+| 1.format | Run gofmt and leave no unformatted Go files | lint:gofmt lint:goimports | E W G |
 | 1.vet | Run go vet before handoff | lint:govet vet:printf reader | U |
 | 1.lint | Run golangci-lint with the repository config | reader | U |
 | 1.race-run | Run the race detector before handoff | reader | ours |
@@ -35,7 +40,7 @@ check every row by reading.
 | 2.library-minimum | Declare the oldest tested release in a library | reader | ours |
 | 2.min-max | Use min and max for simple comparisons | lint:modernize fix:minmax | R |
 | 2.clear | Use clear for clearing maps or slices | reader | R |
-| 2.slices | Use slices helpers over hand loops and `sort.Slice` | lint:modernize fix:slicessort | R |
+| 2.slices | Use slices helpers over hand loops and `sort.Slice` | lint:modernize fix:slicessort fix:slicescontains fix:slicesbackward | R |
 | 2.maps | Use maps helpers over hand loops | lint:modernize fix:mapsloop | R |
 | 2.cmp | Use cmp for standard ordering comparisons | reader | R |
 | 2.slog | Prefer `log/slog` to `log.Printf` | reader | R |
@@ -44,9 +49,9 @@ check every row by reading.
 | 2.loop-copy | Remove redundant copies of fresh range variables | lint:modernize fix:forvar | R |
 | 2.range-int | Use range over integers for simple loops | lint:modernize fix:rangeint | R |
 | 2.mux | Use ServeMux method and wildcard patterns | reader | R |
-| 2.iterator-helpers | Use iterator helpers instead of collecting to range | reader | R |
+| 2.iterator-helpers | Use iterator helpers instead of collecting to range | lint:modernize fix:stditerators fix:slicesbackward fix:stringsseq reader | R |
 | 2.generic-alias | Use generic aliases where aliases are needed | reader | R |
-| 2.test-context | Use `t.Context` in tests | lint:modernize fix:testingcontext reader | G |
+| 2.test-context | Use `t.Context` in tests | lint:modernize lint:usetesting fix:testingcontext reader | G |
 | 2.b-loop | Use `b.Loop` in benchmarks | reader | R |
 | 2.test-chdir | Use `t.Chdir` for temporary directory changes in tests | lint:usetesting | R |
 | 2.os-root | Use `os.Root` for untrusted paths | lint:gosec reader | R |
@@ -62,7 +67,7 @@ check every row by reading.
 | 2.gomaxprocs | Trust container aware GOMAXPROCS | reader | R |
 | 2.new-expr | Use `new(expr)` instead of a pointer helper | lint:modernize fix:newexpr | R |
 | 2.errors-astype | Use `errors.AsType` instead of an `errors.As` target pointer | lint:modernize fix:errorsastype | R |
-| 2.modernizers | Use the go fix modernizers where applicable | lint:modernize fix:any | R |
+| 2.modernizers | Use the go fix modernizers where applicable | lint:modernize fix:any fix:embedlit fix:reflecttypefor fix:stringsbuilder fix:stringscut fix:stringscutprefix fix:unsafefuncs | R |
 | 2.generic-methods | Use generic methods instead of helper free functions | reader | R |
 | 2.json-v2 | Use `encoding/json/v2` where its new API is appropriate | reader | R |
 | 2.uuid | Use the standard uuid package | reader | R |
@@ -85,9 +90,9 @@ check every row by reading.
 | 3.io-verb | Use Fetch or Load for I/O | reader | ours |
 | 3.initialism | Keep initialisms in a single case | lint:revive | W G |
 | 3.receiver-name | Short receiver names, the same on every method | lint:revive lint:staticcheck | W G |
-| 3.receiver-consistency | The same receiver name on every method | lint:revive | W G |
+| 3.receiver-consistency | The same receiver name on every method | lint:revive lint:staticcheck | W G |
 | 3.receiver-length | One or two letter receiver names | reader | ours (W and G say usually; kept as a limit so receivers stay uniform) |
-| 3.shadow-builtin | Do not shadow predeclared names | lint:revive | ours |
+| 3.shadow-builtin | Do not shadow predeclared names | lint:predeclared lint:revive | ours |
 | 3.shadow-import | Do not shadow a package name | reader | G (Google allows shadowing with a rename; a ban keeps the package reachable) |
 | 3.enum-type | Use a named enum type | reader | U |
 | 3.enum-iota | Use iota for enum constants | reader | E U |
@@ -97,7 +102,7 @@ check every row by reading.
 | 3.enum-no-literal-zero | Use the named zero constant in comparisons | reader | ours |
 | 3.enum-roundtrip | Accept every String name in the enum parser | reader | ours |
 | 4.early-return | Return early, with no else after return | lint:revive reader | E W G U |
-| 4.early-return-indent | Leave the successful path unindented | reader | E W G U |
+| 4.early-return-indent | Leave the successful path unindented | lint:revive reader | E W G U |
 | 4.bool-param | Avoid Boolean parameters in exported signatures | lint:revive reader | ours (Google allows Boolean options and Uber call site comments; a named type reads at the call site) |
 | 4.options-count | Options struct for three or more optional settings | reader | ours (G and U leave the form open; one threshold keeps APIs alike) |
 | 4.options-value | Pass options structs by value | reader | ours |
@@ -126,14 +131,14 @@ check every row by reading.
 | 6.error-case | Use lowercase error text | lint:staticcheck | W G |
 | 6.error-failed | No "failed to" in error context | reader | G U |
 | 6.error-redundancy | Avoid repeating data the wrapped error already carries | reader | G U |
-| 6.wrap-public | Use `%w` when callers match the cause (errorlint flags `%v` of an error value, misses `err.Error()` and an error converted to `any`, and cannot tell whether the cause is public) | lint:errorlint reader | G U |
+| 6.wrap-public | Use `%w` when callers match the cause (errorlint flags `%v` of an error value, Go 1.27 `vet:printf` flags `%w` on `*E` where `E` implements `error`, and tools cannot tell whether the cause is public) | lint:errorlint lint:govet vet:printf reader | G U |
 | 6.hide-private | Use `%v` for a private cause | reader | G U |
 | 6.error-text | Never match errors by message text | reader | G U |
 | 6.error-is | Use `errors.Is` when an error might be wrapped | lint:errorlint | G U |
 | 6.error-as | Use `errors.AsType` for matching concrete error types | lint:modernize fix:errorsastype | ours |
 | 6.exported-error | Return the error interface from exported APIs | reader | G U |
 | 6.ignore-comment | Ignore an error only with a stated reason | lint:errcheck lint:nolintlint reader | G (E and W say never discard; Google's explained exception, enforced by nolintlint) |
-| 6.in-band | No in band sentinel for not found | reader | E W G |
+| 6.in-band | No in band sentinel for not found | lint:nilnil reader | E W G |
 | 6.lookup-consistent | One not found convention per type | reader | ours |
 | 6.panic | Never panic for invalid caller input | reader | W G (E, G and U allow internal or startup panics; caller input never panics) |
 | 6.recover | Do not use recover for control flow | reader | U (E and G show recover inside a package; Uber's stricter route) |
@@ -146,9 +151,9 @@ check every row by reading.
 | 7.ctx-propagate | Do not replace a caller context with Background | lint:contextcheck reader | W G (Google admits another root when the caller's is wrong; the skill keeps the normal rule) |
 | 7.cancel-defer | Defer cancel after deriving a context (the tools report a cancel that some path never calls, not where the call is placed) | lint:gosec lint:govet vet:lostcancel reader | ours |
 | 7.cancel-prompt-defer | Defer cancel at once, not later by hand | reader | ours |
-| 7.ctx-values | Context values only for request scoped data | reader | ours |
+| 7.ctx-values | Context values only for request scoped data | lint:revive reader | ours |
 | 7.sync-api | Prefer synchronous APIs and let callers add concurrency | reader | W G |
-| 7.cancel-return | Return `ctx.Err` when the operation was canceled | lint:nilerr reader | ours |
+| 7.cancel-return | Return `ctx.Err` when the operation was canceled | lint:nilerr lint:nilnesserr reader | ours |
 | 7.cancel-outcome | Cancellation is not a result to record | reader | ours |
 | 7.deadline-once | Put one timeout around retries or fallbacks | reader | ours |
 | 7.goroutine-lifetime | Every goroutine has an owner, a wait, and a predictable finish or a stop signal | reader | U W G (Uber asks for a predictable finish or a stop signal and a way to wait. The wiki and Google ask for documentation only when the code does not make the lifetime evident.) |
@@ -187,8 +192,8 @@ check every row by reading.
 | 8.csrf | CrossOriginProtection on state changing browser endpoints | reader | ours |
 | 8.client-timeout | Set a timeout on HTTP clients | reader | ours |
 | 8.client-context | Use NewRequestWithContext for HTTP client requests | lint:noctx | ours |
-| 8.body-close | Close every HTTP response body | lint:bodyclose | G |
-| 8.client-timeout-std | No default HTTP client without a timeout | reader | ours |
+| 8.body-close | Close every HTTP response body | lint:bodyclose lint:govet vet:httpresponse | G |
+| 8.client-timeout-std | No default HTTP client without a timeout | lint:noctx reader | ours |
 | 8.config-main | Read configuration once in main | reader | ours |
 | 8.close-not-finalizer | Close, not a finalizer or cleanup | reader | ours |
 | 9.structured-logger | Use `log/slog` and put dynamic data in attributes | reader | ours (Google log and glog not taken; slog is the standard library) |
@@ -215,12 +220,12 @@ check every row by reading.
 | 10.benchmark-loop | Use `b.Loop` in benchmarks | reader | ours |
 | 10.fuzz-parser | Fuzz parsers for untrusted input | reader | ours |
 | 11.doc-present | Add a doc comment for every exported name | lint:revive reader | E W G |
-| 11.doc-sentence | Doc comments start with the name | reader | E W G |
+| 11.doc-sentence | Doc comments start with the name | lint:revive reader | E W G |
 | 11.doc-contract | Document what the signature cannot say | reader | G U |
 | 11.doc-errors | Document errors callers can match | reader | G U |
 | 11.doc-concurrency | Document concurrency safety when it matters | reader | G |
 | 11.deprecated | Use a Deprecated: paragraph for retired APIs | reader | ours |
-| 11.fix-inline | Use go:fix inline on retired one-line wrappers | reader | ours |
+| 11.fix-inline | Use go:fix inline on retired one-line wrappers | lint:govet fix:inline reader | ours |
 | 11.module-root | Start with one root package | reader | L |
 | 11.cmd | Put commands under cmd when the module also has importable packages | reader | L |
 | 11.internal | Put private packages under internal | reader | L |

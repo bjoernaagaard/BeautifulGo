@@ -49,7 +49,7 @@ The skills run these tools, and they skip a tool that is missing.
 
 ## Use the lint configuration
 
-The configuration enables 33 linters and the `gofmt` and `goimports` formatters. Copy it
+The configuration enables 41 linters and the `gofmt` and `goimports` formatters. Copy it
 to the root of your module.
 
 ```bash
@@ -76,9 +76,14 @@ moved. Run `python3 scripts/check-versions.py --upstream` to see the same report
 
 ## Sources
 
-The rules come from [Effective Go](https://go.dev/doc/effective_go), the
+The rules draw from [Effective Go](https://go.dev/doc/effective_go), the
 [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments) wiki, the
 [Google](https://google.github.io/styleguide/go/) and
-[Uber](https://github.com/uber-go/guide/blob/master/style.md) style guides, and the
-[Go release notes](https://go.dev/doc/devel/release). The project follows the design of
+[Uber](https://github.com/uber-go/guide/blob/master/style.md) style guides,
+[Organizing a Go module](https://go.dev/doc/modules/layout), and the
+[Go release notes](https://go.dev/doc/devel/release). Where the older style guides lag on
+Go 1.21–1.27 idioms, the Go release notes and toolchain (`go fix`, `go vet`) are the
+primary authority. Nearly half of the entries in `references/rules.md` (marked `ours`) are
+this project's stricter house defaults where upstream guides stay permissive or silent.
+The project follows the design of
 [Beautiful Rust](https://github.com/morganlinton/BeautifulRust).

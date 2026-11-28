@@ -2,7 +2,7 @@
 
 Source: https://google.github.io/styleguide/go/ (the guide at /guide, the decisions at /decisions, and the best practices at /best-practices)
 
-Google's Go style guide has three parts. The guide states the principles and is both canonical and normative. The decisions page rules on specific questions such as naming, imports, errors, and tests, and it is normative but not canonical. The best practices page gives advice that is neither, but is common at Google. Read this digest when you must choose between clarity and an abstraction, when you name something, or when you design an error, a test failure message, or a package boundary. The pages were written before iterators, `log/slog` guidance, and generic methods. `modern-go.md` lists what each release since the source changed; follow it where the two differ.
+Google's Go style guide has three parts. The guide states the principles and is both canonical and normative. The decisions page rules on specific questions such as naming, imports, errors, and tests, and it is normative but not canonical. The best practices page gives advice that is neither, but is common at Google. Read this digest when you must choose between clarity and an abstraction, when you name something, or when you design an error, a test failure message, or a package boundary. Google exports updates from its internal guide (covering generics, `t.Context`, `context.WithoutCancel`, `log/slog` mentions, sentinel `%w` placement, and a dedicated `Interfaces` section), while still omitting iterators, `errors.AsType`, `WaitGroup.Go`, `synctest`, `b.Loop`, and generic methods. `modern-go.md` lists what each release added; follow it where the two differ.
 
 ## Principles, in priority order
 
@@ -113,4 +113,4 @@ When two principles conflict, the earlier one wins. The guide also says that the
 
 ## Newer Go and the source
 
-- The three pages do not mention iterators. Return `iter.Seq[T]` or `iter.Seq2[K, V]` when callers stream and may stop early, and a slice when callers need the length or a second pass.
+- The three pages do not yet cover iterators (`iter.Seq`), `errors.AsType`, `WaitGroup.Go`, `testing/synctest`, `b.Loop`, or generic methods. Return `iter.Seq[T]` or `iter.Seq2[K, V]` when callers stream and may stop early, and a slice when callers need the length or a second pass. See `modern-go.md` for the rest.

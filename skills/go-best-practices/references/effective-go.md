@@ -2,7 +2,7 @@
 
 Source: https://go.dev/doc/effective_go
 
-Effective Go is the Go team's original tutorial on writing clear, idiomatic Go. The page says it was written in 2009 and has not been updated much since, so it knows nothing about modules, generics, iterators, or `log/slog`. Read this digest when you need the reasoning behind a naming, interface, embedding, or concurrency choice. `modern-go.md` lists what each release since the source changed; follow it where the two differ.
+Effective Go is the Go team's original tutorial on writing clear, idiomatic Go. Written in 2009 and not actively maintained as a whole (aside from targeted edits such as Go 1.26's `new(expr)` note in April 2026), it still omits modules, generics, `context.Context`, `errors.Is`, iterators, and `log/slog`. Read this digest when you need the reasoning behind a naming, interface, embedding, or concurrency choice. `modern-go.md` lists what each release since the source changed; follow it where the two differ.
 
 ## Formatting and comments
 

@@ -106,6 +106,14 @@ a library function and a hand-written loop. Every section lists "use X instead o
   Delete `automaxprocs`. Setting `GOMAXPROCS` yourself turns this off.
 - Use `http.NewCrossOriginProtection()` to reject cross-site browser requests that change
   state instead of a hand-written CSRF check.
+- Use `runtime/trace.NewFlightRecorder` to keep a rolling in-memory execution trace you can
+  snapshot when an anomaly happens.
+- `os.Root` gains convenience methods (`ReadFile`, `WriteFile`, `MkdirAll`, `RemoveAll`,
+  `Rename`, `Symlink`, `Readlink`, `Chmod`, `Chown`, `Chtimes`).
+- `log/slog.GroupAttrs` builds a group from an existing `[]slog.Attr` slice without boxing
+  to `[]any`; `reflect.TypeAssert[T](v)` extracts a typed value from a `reflect.Value`
+  without allocating an interface; `testing.T.Output()` returns an `io.Writer` tied to test
+  output and `T.Attr(k, v)` records structured test metadata.
 - `encoding/json/v2` is available behind `GOEXPERIMENT=jsonv2`. Use 1.27 for the final form.
 
 ## Go 1.26
@@ -122,30 +130,65 @@ a library function and a hand-written loop. Every section lists "use X instead o
   Run `go fix -diff ./...` on every upgrade. The old obsolete fixers are removed.
 - Use `testing.T.ArtifactDir()` to write files a test produces (logs, diffs, screenshots)
   instead of `t.TempDir()` when you want to keep them. Run `go test -artifacts` to save them in `-outputdir`.
+- `testing.B.Loop()` no longer inhibits inlining inside the loop body, removing the
+  Go 1.24 overhead that kept some benchmarks on `b.N`.
+- Use `log/slog.NewMultiHandler` to fan logs out to multiple handlers; `net.Dialer` adds
+  typed `DialTCP`, `DialUDP`, `DialIP`, and `DialUnix` methods accepting `netip.AddrPort`
+  or `netip.Addr`; `reflect.Type` and `reflect.Value` add iterator methods (`Fields`,
+  `Methods`, `Ins`, `Outs`); `testing/cryptotest.SetGlobalRandom` makes `crypto/rand`
+  deterministic in tests; `crypto/hpke` adds RFC 9180 HPKE; `httputil.ReverseProxy.Director`
+  is deprecated in favor of `Rewrite`.
+- The Green Tea garbage collector is enabled by default.
 
 ## Go 1.27
 
 - Methods can declare their own type parameters: `func (l List[T]) Map[U any](f func(T) U) List[U]`.
   Use them instead of a free function that exists only to add a type parameter. A generic
   method cannot satisfy an interface method, and an interface method cannot be generic.
+- Function type inference now applies whenever a generic function is assigned or converted
+  to a matching function type.
 - A struct literal may use any valid field selector as a key, including a promoted field of an
   embedded struct. The `embedlit` analyzer simplifies the old nested form.
 - Use `encoding/json/v2` and `encoding/json/jsontext` for new code that needs strict
-  decoding. Defaults reject invalid UTF-8 and duplicate names. Options such as
-  `json.RejectUnknownMembers(true)` replace `Decoder.DisallowUnknownFields`.
+  decoding. Watch the v2 behavioral differences from v1:
+  - Defaults reject invalid UTF-8 and duplicate object names, and match struct fields
+    case-sensitively. Use `json.RejectUnknownMembers(true)` instead of
+    `Decoder.DisallowUnknownFields`, and `MarshalWrite`/`UnmarshalRead` for streaming I/O.
+  - Nil slices marshal as `[]` (`FormatNilSliceAsNull(true)` for `null`) and nil maps
+    marshal as `{}` (`FormatNilMapAsNull(true)` for `null`).
+  - `omitempty` omits empty JSON values (`null`, `""`, `{}`, `[]`) rather than zero Go
+    values; migrate bool, number, pointer, and interface fields to `omitzero`.
+  - `time.Duration` has no default JSON format and returns a runtime error unless you pass
+    `encoding/json.FormatDurationAsNano(true)`.
+  - Map marshaling is non-deterministic unless you pass `json.Deterministic(true)`.
+  - Pre-GA experiment options (`format` and `unknown` tags, `DiscardUnknownMembers`,
+    `SkipFunc`) were removed, and the `inline` tag option was renamed to `embed`.
+- `encoding/json` now runs on the v2 engine, so unmarshaling is faster. Do not match on its
+  error text.
 - `bytes.CutLast` and `strings.CutLast` split around the last separator, replacing
   `LastIndex` plus slicing.
-- `encoding/json/v2` marshals a nil slice as `[]`, not `null`, unless you pass
-  `json.FormatNilSliceAsNull(true)`.
-- `encoding/json` now runs on the v2 engine, so decoding is faster. Do not match on its error
-  text.
-- Use the `uuid` package (`uuid.New`, `uuid.Parse`) instead of a third-party UUID module.
+- Use the `uuid` package (`uuid.New` for v4, `uuid.NewV7` for time-ordered RFC 9562 UUIDs,
+  `uuid.Parse`) instead of a third-party UUID module.
+- Use `httptest.NewTestServer(t, handler)` for an in-memory fake-network HTTP server
+  compatible with `testing/synctest`, and `synctest.Sleep(d)` to advance fake time and wait
+  for bubble goroutines to settle.
+- HTTP/1 `Response.Body.Close()` now automatically drains unread content up to a
+  conservative limit for connection reuse, so routine manual `io.Copy(io.Discard, ...)`
+  drains are no longer needed on Go 1.27 toolchains.
+- `net/url` adds `(*URL).Clone()` and `Values.Clone()`; `net/http.Server` adds
+  `MaxHeaderValueCount` (`DefaultMaxHeaderValueCount = 500`); `crypto/mldsa` adds
+  post-quantum ML-DSA signatures.
 - Use the `goroutineleak` profile (`pprof.Lookup("goroutineleak")` or
   `/debug/pprof/goroutineleak`) to find goroutines blocked forever on unreachable channels and
   locks. It can miss leaks that hang on a global or a runnable goroutine.
+- Tracebacks include `runtime/pprof` goroutine labels by default for `go 1.27` modules
+  (disable with `GODEBUG=tracebacklabels=0`).
+- `go vet` (`printf`) now reports `fmt.Errorf("...: %w", p)` when `p` has type `*E` and
+  value type `E` itself implements `error` (which breaks `errors.Is`).
 - `go test` runs the `stdversion` vet check by default, so a file that uses an API newer than
   its effective language version fails the test run. Generated files, files that import
   "C", and modules whose `go` line is below 1.21 are exempt.
+- `go mod tidy` automatically merges duplicate `require` blocks for `go 1.27` modules.
 
 ```go
 type List[T any] []T

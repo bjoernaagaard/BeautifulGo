@@ -72,6 +72,13 @@ commit = "fd82e1351b3c513e750e028ae21710366483b184"
 date = "2026-02-02T20:17:52Z"
 
 [[source]]
+reference = "skills/go-best-practices/SKILL.md"
+repo = "golang/website"
+path = "_content/doc/modules/layout.md"
+commit = "bd16446df0fa54238785551495e48207ae0f2c4a"
+date = "2023-09-20T19:30:58Z"
+
+[[source]]
 reference = "skills/go-best-practices/references/concurrency-patterns.md"
 repo = "golang/sync"
 path = "errgroup"

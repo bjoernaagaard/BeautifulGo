@@ -165,14 +165,17 @@ tests that depend on time.
   `time.Sleep`, a channel, or a `sync.WaitGroup.Wait`. Then the clock jumps to the next timer.
   A test of a one-hour timeout takes microseconds.
 - `synctest.Wait()` returns when every other goroutine in the bubble is durably blocked. Call
-  it before you assert on state that a goroutine should have reached.
+  it before you assert on state that a goroutine should have reached. Since Go 1.27,
+  `synctest.Sleep(d)` combines `time.Sleep(d)` and `synctest.Wait()` so the system under
+  test settles after advancing the fake clock.
 - `Test` waits for all bubble goroutines to exit and fails with a deadlock panic if they are
   all blocked and no timer is pending. A goroutine leak in the code under test fails the test.
 - Do not sleep to wait for a goroutine in a test. Use `synctest.Wait()` or a channel.
 - Inside the bubble, do not call `t.Run`, `t.Parallel`, or `t.Deadline`. In a table test, start
   one bubble inside each subtest.
 - Keep real network I/O out of the bubble, because a goroutine blocked on a socket read is not
-  durably blocked and the clock stops. Use `net.Pipe` or an in-memory fake instead.
+  durably blocked and the clock stops. Since Go 1.27, use `httptest.NewTestServer(t, handler)`
+  for an in-memory fake-network HTTP server, or `net.Pipe` for raw connections.
 
 ```go
 func TestTimeout(t *testing.T) {

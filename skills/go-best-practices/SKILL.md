@@ -10,9 +10,10 @@ description: >-
 
 # Go best practices
 
-Follow Effective Go, the Go Code Review Comments wiki, and the Google and Uber style
-guides. This file holds the rules where they disagree, where models drift, and what
-changed through Go 1.27.
+Follow Effective Go, Go Code Review Comments, the Google and Uber style guides, and the Go
+module layout guide where they still apply. Go 1.21–1.27 release notes and the toolchain
+(`go fix`, `go vet`) take precedence for modern idioms, and this file records the stricter
+defaults (`ours` in `references/rules.md`) where guides disagree or stay silent.
 
 ## 1. Before you hand back code
 
@@ -47,9 +48,9 @@ tests, because the line is a minimum for every importer.
 | 1.22 | a fresh loop variable per iteration; `for i := range n`; `http.ServeMux` patterns `"GET /items/{id}"` | `x := x` copies, third-party routers for simple routing |
 | 1.23 | iterators: `iter.Seq`, `slices.Collect`, `maps.Keys`, `slices.Sorted` | building a slice only to range over it |
 | 1.24 | generic type aliases; `t.Context()`, `b.Loop()`, `t.Chdir`; `os.Root`; `omitzero`; `tool` lines in `go.mod`; `strings.SplitSeq`; `runtime.AddCleanup`; `crypto/rand.Text`; `slog.DiscardHandler` | `context.WithCancel` in tests, `for i := 0; i < b.N; i++`, `tools.go`, `SetFinalizer` |
-| 1.25 | `sync.WaitGroup.Go`; `testing/synctest`; `http.CrossOriginProtection`; container-aware `GOMAXPROCS` | `wg.Add(1)` plus `defer wg.Done()`, sleeping in tests, hand-rolled CSRF checks |
-| 1.26 | `new(expr)`; `errors.AsType[*T]`; the modernizers in `go fix` | `ptr(v)` helpers, `var target *T; errors.As(err, &target)` |
-| 1.27 | generic methods; `encoding/json/v2`; the `uuid` package; the `goroutineleak` profile | free functions that exist only to add a type parameter, third-party UUID modules |
+| 1.25 | `sync.WaitGroup.Go`; `testing/synctest`; `http.CrossOriginProtection`; `trace.NewFlightRecorder`; container-aware `GOMAXPROCS` | `wg.Add(1)` plus `defer wg.Done()`, sleeping in tests, hand-rolled CSRF checks |
+| 1.26 | `new(expr)`; `errors.AsType[*T]`; `slog.NewMultiHandler`; `Dialer.DialTCP`/`DialUDP` (`netip.AddrPort`); `go fix` modernizers | `ptr(v)` helpers, `var target *T; errors.As(err, &target)`, `ReverseProxy.Director` |
+| 1.27 | generic methods; `encoding/json/v2`; `uuid` (`New`, `NewV7`); `httptest.NewTestServer` & `synctest.Sleep`; `goroutineleak` profile | free functions for one type parameter, third-party UUID modules, manual HTTP/1 body drains |
 
 - Pin tools with `go get -tool <path>` and run them with `go tool <name>`.
 - Commit `go.sum` and run `go mod tidy` after import changes. Add a `toolchain` line only
@@ -122,7 +123,8 @@ func writeReport(path string, data []byte) (err error) {
   A parser that reads bytes, such as `json.Unmarshal`, never saw the path, so add it:
   `fmt.Errorf("parse config %s: %w", path, err)`.
 - **`%w` makes the cause part of your API.** Use `%v` when the cause is an internal
-  detail you may change.
+  detail you may change. Never pass `*E` to `%w` when value type `E` itself implements
+  `error` (`go vet` reports this in Go 1.27 because it defeats `errors.Is`).
 - **Match with `errors.Is` and `errors.AsType`**, never by error text or `==` on a
   wrapped error:
 
@@ -216,9 +218,12 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
 - Spans are `time.Duration` and instants are `time.Time`. If a wire format forces a bare
   number, put the unit in the name.
 - **JSON:** give every request and response body a struct type, not `map[string]any`.
-  Use `omitzero` for structs, `time.Time`, and values whose zero value is meaningful, and
-  keep `omitempty` for empty strings, slices, and maps. New code that needs strict decoding uses
-  `encoding/json/v2`. Since Go 1.27, `encoding/json` runs on the v2 engine, so don't
+  Use `omitzero` for structs, `time.Time`, bools, numbers, pointers, and values whose zero
+  value is meaningful, and keep `omitempty` for empty strings, slices, and maps. New code
+  that needs strict decoding uses `encoding/json/v2` (note v2 defaults: nil slices marshal
+  as `[]`, nil maps as `{}`, `time.Duration` errors without `FormatDurationAsNano(true)`,
+  field matching is case-sensitive, and map order is non-deterministic unless
+  `Deterministic(true)`). Since Go 1.27, `encoding/json` runs on the v2 engine, so don't
   assert on its error text.
 - Open files with untrusted names through `os.OpenRoot(dir)`.
 - `crypto/rand` for secrets (`rand.Text()` for tokens), `math/rand/v2` for the rest.
@@ -226,14 +231,16 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
   `mux.HandleFunc("GET /items/{id}", h)` and `r.PathValue("id")`, and wrap state-changing
   browser endpoints in `http.NewCrossOriginProtection()`.
 - **HTTP clients:** set a timeout, build requests with `http.NewRequestWithContext`, and
-  close every response body.
+  close every response body (since Go 1.27, HTTP/1 `Response.Body.Close` auto-drains small
+  unread bodies for connection reuse; suppress `errcheck` on read-only closes with a reason).
 - Read configuration once in `main` and pass it down.
 - Never use a cleanup or finalizer for work `Close` should do.
 
 ## 9. Logging
 
 - `log/slog` with a constant message and data in attributes:
-  `logger.InfoContext(ctx, "order shipped", "order_id", id)`.
+  `logger.InfoContext(ctx, "order shipped", "order_id", id)`. On shutdown paths where `ctx`
+  is already canceled, pass `context.WithoutCancel(ctx)`.
 - Libraries mostly return errors and don't log.
 - Never log secrets. Implement `slog.LogValuer` on types that hold them.
 - Tests and benchmarks that don't inspect logs use `slog.New(slog.DiscardHandler)`.
@@ -245,10 +252,12 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
 - Failure messages read `Parse(%q) = %v, want %v`. Compare structs with `go-cmp`'s
   `cmp.Diff`, and add no assertion library.
 - Use `t.TempDir()`, `t.Setenv`, `t.Cleanup`, and `t.Helper()`.
-- Run code that waits on timers inside `synctest.Test`. Keep real network I/O out of the
-  bubble, and don't call `t.Run` or `t.Parallel` inside it.
-- Test handlers with `httptest`, not a mocked `http.Client`. Prefer a real temp directory or
-  in-process server over an interface added for mocking.
+- Run code that waits on timers inside `synctest.Test`, and advance fake time with
+  `synctest.Sleep`. Keep real network I/O out of the bubble (use `httptest.NewTestServer`
+  or `net.Pipe`), and don't call `t.Run` or `t.Parallel` inside it.
+- Test handlers with `httptest` (`httptest.NewTestServer` for in-memory fake-network tests),
+  not a mocked `http.Client`. Prefer a real temp directory or in-process server over an
+  interface added for mocking.
 - Benchmarks use `for b.Loop()`. Fuzz parsers of untrusted input.
 
 ## 11. Documentation and layout

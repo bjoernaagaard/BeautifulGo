@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the rule table's shape, its ids, and the names of the tools it lists.
+"""Check the rule table's shape, its ids, and that its claimed tools fire on scripts/lint-fixture.
 
 Usage: check-rules.py [table.md]   (default skills/go-best-practices/references/rules.md)
 
@@ -8,9 +8,10 @@ separator line `|---|---|---|---|`. Every other table row needs an id, a rule, a
 a source. The source starts with guide letters from E W G U L R, or with ours, and may add
 an explanation in parentheses. The ids must equal scripts/rule-ids.txt, so adding,
 removing or renaming a rule takes an edit there too. Each lint:, vet: and fix: name must
-be a linter or analyzer the tool has. The tool names are checked structurally, so a pass
-does not show that the named tool enforces the rule.
+exist in the tool and, except for formatters checked by `golangci-lint fmt`, actually
+produce a diagnostic on scripts/lint-fixture.
 """
+import json
 import re
 import subprocess
 import sys
@@ -19,6 +20,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 skills = root / "skills"
 config = skills / "go-review/assets/golangci.yml"
+fixture = root / "scripts/lint-fixture"
 inventory = root / "scripts/rule-ids.txt"
 CHECK_FORMS = re.compile(r"(lint|vet|fix):([A-Za-z0-9_]+)|compiler|reader")
 HEADER = "| id | rule | check | source |"
@@ -73,6 +75,7 @@ def block_names(output, header, split):
 def rule_errors(rows, sections, known, referenced):
     """known maps 'lint', 'vet' and 'fix' to the set of valid names."""
     errors, seen = [], set()
+    claimed = {"lint": set(), "vet": set(), "fix": set()}
     for rule_id, check in rows:
         if rule_id in seen:
             errors.append(f"{rule_id}: duplicate id")
@@ -84,14 +87,84 @@ def rule_errors(rows, sections, known, referenced):
             match = CHECK_FORMS.fullmatch(token)
             if not match:
                 errors.append(f"{rule_id}: unknown check {token}")
-            elif match[1] and match[2] not in known[match[1]]:
-                errors.append(f"{rule_id}: {match[1]}:{match[2]} is not a linter or analyzer the tool has")
+            elif match[1]:
+                if match[2] not in known[match[1]]:
+                    errors.append(f"{rule_id}: {match[1]}:{match[2]} is not a linter or analyzer the tool has")
+                else:
+                    claimed[match[1]].add(match[2])
     errors += [f"{name}: `{ref}` has no row in the rule table" for name, ref in referenced if ref not in seen]
+    return errors, claimed
+
+
+def run(*command, cwd=None):
+    return subprocess.run(command, cwd=cwd, capture_output=True, text=True, check=True).stdout
+
+
+def fired_linters():
+    proc = subprocess.run(
+        ["golangci-lint", "run", "--config", str(config), "--output.json.path=stdout",
+         "--show-stats=false", "--uniq-by-line=false", "--max-issues-per-linter=0",
+         "--max-same-issues=0", "./..."],
+        cwd=fixture, capture_output=True, text=True, check=False,
+    )
+    if proc.returncode > 1:
+        raise RuntimeError(f"golangci-lint failed on {fixture}: {proc.stderr.strip()}")
+    data = json.loads(proc.stdout)
+    return {issue["FromLinter"] for issue in (data.get("Issues") or [])}
+
+
+def fired_vet_analyzers():
+    proc = subprocess.run(
+        ["go", "vet", "-json", "./..."],
+        cwd=fixture, capture_output=True, text=True, check=False,
+    )
+    fired = set()
+    dec = json.JSONDecoder()
+    text = proc.stdout + "\n" + proc.stderr
+    pos = 0
+    while pos < len(text):
+        idx = text.find("{", pos)
+        if idx == -1:
+            break
+        try:
+            obj, end = dec.raw_decode(text, idx)
+            pos = end
+        except ValueError:
+            pos = idx + 1
+            continue
+        if isinstance(obj, dict):
+            for analyzers in obj.values():
+                if isinstance(analyzers, dict):
+                    for name, diags in analyzers.items():
+                        if diags:
+                            fired.add(name)
+    return fired
+
+
+def fired_fix_analyzers(names):
+    fired = set()
+    for name in sorted(names):
+        proc = subprocess.run(
+            ["go", "fix", f"-{name}", "-diff", "./..."],
+            cwd=fixture, capture_output=True, text=True, check=False,
+        )
+        if proc.stdout.strip() or f"fix: {name}:" in proc.stderr:
+            fired.add(name)
+    return fired
+
+
+def fixture_errors(claimed, formatters):
+    errors = []
+    lint_fired = fired_linters()
+    for name in sorted(claimed["lint"] - formatters - lint_fired):
+        errors.append(f"lint:{name} is cited in rules.md but did not fire on scripts/lint-fixture")
+    vet_fired = fired_vet_analyzers()
+    for name in sorted(claimed["vet"] - vet_fired):
+        errors.append(f"vet:{name} is cited in rules.md but did not fire on scripts/lint-fixture")
+    fix_fired = fired_fix_analyzers(claimed["fix"])
+    for name in sorted(claimed["fix"] - fix_fired):
+        errors.append(f"fix:{name} is cited in rules.md but did not fire on scripts/lint-fixture")
     return errors
-
-
-def run(*command):
-    return subprocess.run(command, capture_output=True, text=True, check=True).stdout
 
 
 def main(argv):
@@ -115,13 +188,18 @@ def main(argv):
         referenced += [(name, ref) for ref in re.findall(r"`(\d+\.[a-z][a-z0-9-]*)`", text)]
     rows, errors = table_rows(table.read_text())
     expected = set(inventory.read_text().split())
+    claimed = {"lint": set(), "vet": set(), "fix": set()}
     if rows or not errors:  # skip the id checks when the table itself is malformed
-        errors += inventory_errors(rows, expected) + rule_errors(rows, sections, known, referenced)
+        r_errors, claimed = rule_errors(rows, sections, known, referenced)
+        errors += inventory_errors(rows, expected) + r_errors
+        if not errors:
+            errors += fixture_errors(claimed, formatters)
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1
-    print(f"{len(rows)} rules match scripts/rule-ids.txt, and every tool name they list exists. "
-          "This checks names only, not that a tool enforces its rule.")
+    print(f"{len(rows)} rules match scripts/rule-ids.txt; "
+          f"{len(claimed['lint'] - formatters)} linters, {len(claimed['vet'])} vet analyzers, and "
+          f"{len(claimed['fix'])} fix analyzers verified against scripts/lint-fixture.")
     return 0
 
 
